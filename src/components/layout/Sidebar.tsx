@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Github, Camera, User, ExternalLink, FileText } from "lucide-react";
+import { Github, Camera, ExternalLink, FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils/cn";
 
@@ -47,8 +48,14 @@ export function Sidebar() {
         className="px-5 py-6 border-b border-border hover:bg-surface-2 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center">
-            <User className="w-4 h-4 text-accent" />
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-border flex-shrink-0">
+            <Image
+              src="/images/profile.jpg"
+              alt="Profile"
+              width={32}
+              height={32}
+              className="object-cover w-full h-full"
+            />
           </div>
           <span className="font-semibold text-ink-primary text-sm">
             {t("title")}

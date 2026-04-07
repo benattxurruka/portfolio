@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     default: "Portfolio",
     template: "%s | Portfolio",
   },
-  description: "My personal portfolio — projects and photography",
+  description: "Beñat Txurruka's personal portfolio — projects and photography",
 };
 
 export default async function RootLayout({
@@ -28,11 +28,11 @@ export default async function RootLayout({
     cookies(),
   ]);
 
-  // Derive the initial html class server-side to avoid a flash on first load.
-  // "system" cannot be resolved server-side, so we fall back to "dark".
-  // ThemeScript will immediately correct it client-side before first paint.
-  const themeCookie = cookieStore.get("THEME")?.value ?? "dark";
-  const initialClass = themeCookie === "light" ? "" : "dark";
+  // Derive the initial html class server-side to reduce flash on first load.
+  // "system" (and no cookie) cannot be resolved server-side — leave the class
+  // empty and let ThemeScript correct it client-side before first paint.
+  const themeCookie = cookieStore.get("THEME")?.value ?? "system";
+  const initialClass = themeCookie === "dark" ? "dark" : themeCookie === "light" ? "" : "";
 
   return (
     <html lang={locale} className={initialClass}>

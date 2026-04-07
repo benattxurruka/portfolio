@@ -25,14 +25,14 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeSwitcher() {
-  const [theme, setTheme]   = useState<Theme>("dark");
+  const [theme, setTheme]   = useState<Theme>("system");
   const [open, setOpen]     = useState(false);
   const ref                 = useRef<HTMLDivElement>(null);
 
   // Read stored theme once on mount
   useEffect(() => {
     const match = document.cookie.match(/(?:^|;\s*)THEME=([^;]*)/);
-    const stored = match ? decodeURIComponent(match[1]) : "dark";
+    const stored = match ? decodeURIComponent(match[1]) : "system";
     if (["light", "dark", "system"].includes(stored)) {
       setTheme(stored as Theme);
     }
