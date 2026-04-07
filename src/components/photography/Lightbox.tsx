@@ -74,66 +74,116 @@ export function Lightbox({
   const photoUrl = getPhotoUrl(currentPhoto.r2Key);
   const initialVoteCount = votes[currentPhoto.id] ?? 0;
 
+  const navButtonBase =
+    "p-3 rounded-full bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all";
+
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center animate-fade-in"
+      className="fixed inset-0 z-50 bg-black/95 animate-fade-in flex flex-col"
       role="dialog"
       aria-modal="true"
       aria-label={`Photo: ${currentPhoto.title}`}
     >
-      {/* Close */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 text-white/70
-                   hover:bg-white/20 hover:text-white transition-all"
-        aria-label={t("close")}
-      >
-        <X className="w-5 h-5" />
-      </button>
-
-      {/* Counter */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/50 text-sm">
-        {currentIndex + 1} / {photos.length}
+      {/* ── Top bar: counter + close ──────────────────────────────────────── */}
+      <div className="shrink-0 flex items-center justify-between px-4 pt-4 pb-2">
+        <span className="text-white/50 text-sm">
+          {currentIndex + 1} / {photos.length}
+        </span>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all"
+          aria-label={t("close")}
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Previous */}
-      <button
-        onClick={onPrev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full
-                   bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all"
-        aria-label={t("prev")}
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
+      {/* ── Image area ────────────────────────────────────────────────────── */}
+      {/*
+        Portrait: image fills full width, no horizontal padding for side buttons.
+        Landscape / desktop: pad sides so the absolute nav buttons don't overlap.
+      */}
+      <div className="flex-1 min-h-0 relative flex items-center justify-center landscape:px-16">
+        {/* Side nav — landscape & desktop only */}
+        <button
+          onClick={onPrev}
+          className={cn(navButtonBase, "hidden landscape:flex absolute left-4 top-1/2 -translate-y-1/2 z-10")}
+          aria-label={t("prev")}
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
 
-      {/* Next */}
-      <button
-        onClick={onNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full
-                   bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all"
-        aria-label={t("next")}
-      >
-        <ChevronRight className="w-6 h-6" />
-      </button>
-
-      {/* Main image */}
-      <div className="relative w-full h-full flex items-center justify-center px-20 py-24">
-        <div className="relative max-w-full max-h-full w-full h-full">
+        <div className="relative w-full h-full">
           <Image
             key={currentPhoto.id}
             src={photoUrl}
             alt={currentPhoto.title}
             fill
             className="object-contain animate-fade-in"
-            sizes="90vw"
+            sizes="(orientation: portrait) 100vw, 90vw"
             priority
           />
         </div>
+
+        <button
+          onClick={onNext}
+          className={cn(navButtonBase, "hidden landscape:flex absolute right-4 top-1/2 -translate-y-1/2 z-10")}
+          aria-label={t("next")}
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
       </div>
 
-      {/* Bottom info */}
-      <div className="absolute bottom-0 left-0 right-0 px-20 py-6 bg-gradient-to-t from-black/80 to-transparent">
-        <div className="flex items-end justify-between gap-4 max-w-3xl mx-auto">
+      {/* ── Portrait bottom bar: prev / info / next ────────────────────────
+          Shown only in portrait. Replaces the side buttons.               */}
+      <div className="landscape:hidden shrink-0 flex flex-col gap-3 px-4 py-4">
+        {/* Nav row */}
+        <div className="flex items-center justify-between">
+          <button onClick={onPrev} className={navButtonBase} aria-label={t("prev")}>
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+
+          <VoteButton
+            photoId={currentPhoto.id}
+            gallerySlug={gallerySlug}
+            initialCount={initialVoteCount}
+          />
+
+          <button onClick={onNext} className={navButtonBase} aria-label={t("next")}>
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Photo info */}
+        <div className="space-y-1">
+          <h2 className="text-white font-semibold">{currentPhoto.title}</h2>
+          {currentPhoto.description && (
+            <p className="text-white/60 text-sm">{currentPhoto.description}</p>
+          )}
+          <div className="flex items-center gap-4 text-white/40 text-xs">
+            {currentPhoto.location && (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {currentPhoto.location}
+              </span>
+            )}
+            {currentPhoto.takenAt && (
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {new Date(currentPhoto.takenAt).toLocaleDateString(locale, {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Landscape / desktop bottom overlay: info + vote ───────────────── */}
+      <div className="hidden landscape:block absolute bottom-0 left-0 right-0 px-20 py-6 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
+        <div className="flex items-end justify-between gap-4 max-w-3xl mx-auto pointer-events-auto">
           <div className="space-y-1">
             <h2 className="text-white font-semibold text-lg">{currentPhoto.title}</h2>
             {currentPhoto.description && (
