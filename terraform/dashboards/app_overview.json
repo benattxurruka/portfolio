@@ -1,0 +1,87 @@
+{
+  "title": "Portfolio — App Overview",
+  "uid": "portfolio-app-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "tags": ["portfolio", "overview"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Page Views by Route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum by (page) (increase(portfolio_page_views_total[5m]))",
+          "legendFormat": "{{page}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_server_duration_milliseconds_count[1m]))",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      }
+    },
+    {
+      "id": 3,
+      "title": "HTTP P95 Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_server_duration_milliseconds_bucket[5m])))",
+          "legendFormat": "p95 {{route}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Error Logs",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "loki", "uid": "${loki_ds_uid}" },
+      "targets": [
+        {
+          "expr": "{service_name=\"portfolio\"} | json | level=~\"error|warn\"",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Traces",
+      "type": "traces",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "tempo", "uid": "${tempo_ds_uid}" },
+      "targets": [
+        {
+          "queryType": "traceql",
+          "query": "{.service.name = \"portfolio\"}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

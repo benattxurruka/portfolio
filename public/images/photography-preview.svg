@@ -1,0 +1,18 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#111118"/>
+  <!-- Background glow -->
+  <circle cx="100" cy="100" r="80" fill="#7c6af720"/>
+  <!-- Camera body -->
+  <rect x="48" y="72" width="104" height="72" rx="10" fill="#f0f0f5"/>
+  <!-- Viewfinder bump -->
+  <path d="M76 72 L84 58 L116 58 L124 72Z" fill="#f0f0f5"/>
+  <!-- Lens outer ring -->
+  <circle cx="100" cy="108" r="28" fill="#111118"/>
+  <!-- Lens inner -->
+  <circle cx="100" cy="108" r="21" fill="#1e1e28"/>
+  <!-- Lens shine -->
+  <circle cx="100" cy="108" r="15" fill="#7c6af740"/>
+  <circle cx="93" cy="101" r="5" fill="#7c6af780"/>
+  <!-- Flash -->
+  <rect x="62" y="80" width="14" height="9" rx="3" fill="#111118"/>
+</svg>

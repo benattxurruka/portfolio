@@ -1,0 +1,52 @@
+{
+  "Sidebar": {
+    "title": "Portfolio",
+    "navigation": "Navigation",
+    "github": "GitHub Projects",
+    "photography": "Photography",
+    "cv": "CV",
+    "footer": "Built with Next.js & Cloudflare R2"
+  },
+  "Home": {
+    "welcome": "Welcome",
+    "githubTitle": "GitHub Projects",
+    "githubDescription": "Browse my open-source work, side projects, and experiments pulled live from GitHub.",
+    "photographyTitle": "Photography",
+    "photographyDescription": "A gallery of trips, themes, and favourite shots — stored in Cloudflare R2.",
+    "cvTitle": "CV",
+    "cvDescription": "My professional background, experience and skills on LinkedIn."
+  },
+  "GitHub": {
+    "title": "GitHub Projects",
+    "repoCount": "{count, plural, one {# public repository} other {# public repositories}}",
+    "emptyHeading": "No repositories found",
+    "emptyHint": "Make sure GITHUB_USERNAME is set in your environment variables."
+  },
+  "Photography": {
+    "title": "Photography",
+    "summary": "{photoCount, plural, one {# photo} other {# photos}} across {galleryCount, plural, one {# gallery} other {# galleries}}",
+    "byTrip": "By Trip",
+    "byTheme": "By Theme",
+    "allPhotosName": "All Photos",
+    "allPhotosDescription": "All photos in the collection",
+    "emptyHeading": "No galleries yet",
+    "emptyHint": "Upload photos to your R2 bucket — they will be discovered automatically."
+  },
+  "Gallery": {
+    "backLink": "All galleries",
+    "photoCount": "{count, plural, one {# photo} other {# photos}}",
+    "empty": "No photos in this gallery yet."
+  },
+  "GalleryCard": {
+    "favourites": "Curated",
+    "trips": "Trips",
+    "themes": "Theme"
+  },
+  "Lightbox": {
+    "close": "Close",
+    "prev": "Previous photo",
+    "next": "Next photo",
+    "voteAlready": "Already voted",
+    "vote": "Vote for this photo"
+  }
+}

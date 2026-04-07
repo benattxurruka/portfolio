@@ -1,0 +1,52 @@
+{
+  "Sidebar": {
+    "title": "Portfolio",
+    "navigation": "Nabigazioa",
+    "github": "GitHub Proiektuak",
+    "photography": "Argazkigintza",
+    "cv": "CV",
+    "footer": "Next.js eta Cloudflare R2 erabiliz eginda"
+  },
+  "Home": {
+    "welcome": "Ongi etorri",
+    "githubTitle": "GitHub Proiektuak",
+    "githubDescription": "Nire kode irekiko lana, alboko proiektuak eta esperimentuak GitHub-etik zuzenean.",
+    "photographyTitle": "Argazkigintza",
+    "photographyDescription": "Bidaietako, gaietako eta gogoko argazkien galeria bat, Cloudflare R2-n gordetuta.",
+    "cvTitle": "CV",
+    "cvDescription": "Nire ibilbide profesionala, esperientzia eta gaitasunak LinkedIn-en."
+  },
+  "GitHub": {
+    "title": "GitHub Proiektuak",
+    "repoCount": "{count} biltegi publiko",
+    "emptyHeading": "Ez da biltegirik aurkitu",
+    "emptyHint": "Ziurtatu GITHUB_USERNAME ingurune-aldagaietan konfiguratuta dagoela."
+  },
+  "Photography": {
+    "title": "Argazkigintza",
+    "summary": "{photoCount} argazki {galleryCount} galeriatan",
+    "byTrip": "Bidaiaren arabera",
+    "byTheme": "Gaiaren arabera",
+    "allPhotosName": "Argazki guztiak",
+    "allPhotosDescription": "Bildumako argazki guztiak",
+    "emptyHeading": "Oraindik ez dago galeriarik",
+    "emptyHint": "Igo argazkiak R2 bucketera — automatikoki aurkituko dira."
+  },
+  "Gallery": {
+    "backLink": "Galeria guztiak",
+    "photoCount": "{count} argazki",
+    "empty": "Oraindik ez dago argazkirik galeria honetan."
+  },
+  "GalleryCard": {
+    "favourites": "Hautatuak",
+    "trips": "Bidaiak",
+    "themes": "Gaia"
+  },
+  "Lightbox": {
+    "close": "Itxi",
+    "prev": "Aurreko argazkia",
+    "next": "Hurrengo argazkia",
+    "voteAlready": "Dagoeneko bozkatu duzu",
+    "vote": "Argazki hau bozkatu"
+  }
+}

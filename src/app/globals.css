@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Layout tokens ────────────────────────────────────────── */
+:root {
+  --sidebar-width: 240px;
+}
+
+/* ─── Light theme (base) ────────────────────────────────────── */
+:root {
+  --color-surface:        249 249 252;
+  --color-surface-1:      242 242 248;
+  --color-surface-2:      234 234 244;
+  --color-surface-3:      225 225 238;
+  --color-border:         208 208 224;
+  --color-border-subtle:  220 220 234;
+  --color-accent:         101 88 232;
+  --color-accent-hover:   124 106 247;
+  --color-ink-primary:    13 13 24;
+  --color-ink-secondary:  60 60 92;
+  --color-ink-muted:      120 120 160;
+
+  color-scheme: light;
+}
+
+/* ─── Dark theme (override) ─────────────────────────────────── */
+.dark {
+  --color-surface:        13 13 20;
+  --color-surface-1:      17 17 24;
+  --color-surface-2:      24 24 31;
+  --color-surface-3:      30 30 40;
+  --color-border:         42 42 56;
+  --color-border-subtle:  30 30 42;
+  --color-accent:         124 106 247;
+  --color-accent-hover:   149 133 250;
+  --color-ink-primary:    240 240 245;
+  --color-ink-secondary:  160 160 184;
+  --color-ink-muted:      96 96 120;
+
+  color-scheme: dark;
+}
+
+/* ─── Base styles ───────────────────────────────────────────── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface text-ink-primary antialiased;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-accent/30;
+  }
+}
+
+/* ─── Component utilities ───────────────────────────────────── */
+@layer components {
+  .card {
+    @apply bg-surface-2 border border-border rounded-xl overflow-hidden
+           transition-all duration-200 hover:border-accent/40 hover:shadow-lg
+           hover:shadow-accent/5;
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-accent
+           focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+           bg-accent text-white hover:bg-accent-hover active:scale-95
+           transition-all duration-150 focus-ring;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm
+           text-ink-secondary hover:text-ink-primary hover:bg-surface-3
+           transition-all duration-150 focus-ring;
+  }
+
+  .tag {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-surface-3 text-ink-secondary border border-border;
+  }
+}

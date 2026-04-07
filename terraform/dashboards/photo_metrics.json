@@ -1,0 +1,165 @@
+{
+  "title": "Portfolio — Photo Metrics",
+  "uid": "portfolio-photo-metrics",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "timezone": "browser",
+  "tags": ["portfolio", "photos"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Photo Views (total)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum(increase(portfolio_photo_views_total[7d]))",
+          "legendFormat": "Views (7d)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Photo Votes (total)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum(increase(portfolio_photo_votes_total[7d]))",
+          "legendFormat": "Votes (7d)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Average View Duration (seconds)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum(increase(portfolio_photo_view_duration_seconds_sum[7d])) / sum(increase(portfolio_photo_view_duration_seconds_count[7d]))",
+          "legendFormat": "Avg duration",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Views Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum by (photo_id) (increase(portfolio_photo_views_total[1h]))",
+          "legendFormat": "{{photo_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 2 } }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Top 10 Photos by Views",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (photo_id) (increase(portfolio_photo_views_total[7d])))",
+          "legendFormat": "{{photo_id}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Top 10 Photos by Votes",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (photo_id) (increase(portfolio_photo_votes_total[7d])))",
+          "legendFormat": "{{photo_id}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "id": 7,
+      "title": "View Duration Distribution",
+      "type": "histogram",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum by (le) (increase(portfolio_photo_view_duration_seconds_bucket[7d]))",
+          "legendFormat": "{{le}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "photos": [
+    {
+      "id": "japan-001",
+      "r2Key": "photos/japan-2024/shinjuku-night.jpg",
+      "title": "Shinjuku at Night",
+      "description": "The neon-lit streets of Shinjuku after rain",
+      "takenAt": "2024-03-15",
+      "location": "Tokyo, Japan",
+      "galleries": [
+        "favourites",
+        "trips/japan-2024",
+        "themes/cityscape"
+      ],
+      "width": 4032,
+      "height": 3024
+    },
+    {
+      "id": "japan-002",
+      "r2Key": "photos/japan-2024/arashiyama-bamboo.jpg",
+      "title": "Arashiyama Bamboo Grove",
+      "description": "Morning light filtering through the bamboo",
+      "takenAt": "2024-03-18",
+      "location": "Kyoto, Japan",
+      "galleries": [
+        "trips/japan-2024",
+        "themes/nature"
+      ],
+      "width": 3024,
+      "height": 4032
+    },
+    {
+      "id": "patagonia-001",
+      "r2Key": "photos/patagonia-2023/cerro-torre.jpg",
+      "title": "Cerro Torre at Dawn",
+      "description": "The granite tower bathed in alpenglow",
+      "takenAt": "2023-11-04",
+      "location": "El Chaltén, Argentina",
+      "galleries": [
+        "favourites",
+        "trips/patagonia-2023",
+        "themes/nature"
+      ],
+      "width": 5464,
+      "height": 3640
+    },
+    {
+      "id": "patagonia-002",
+      "r2Key": "photos/patagonia-2023/perito-moreno.jpg",
+      "title": "Perito Moreno Glacier",
+      "description": "The advancing ice wall",
+      "takenAt": "2023-11-07",
+      "location": "El Calafate, Argentina",
+      "galleries": [
+        "trips/patagonia-2023",
+        "themes/nature"
+      ],
+      "width": 5464,
+      "height": 3640
+    },
+    {
+      "id": "barcelona-001",
+      "r2Key": "photos/barcelona-2023/sagrada-familia.jpg",
+      "title": "Sagrada Família",
+      "description": "Gaudí's masterpiece in the golden hour",
+      "takenAt": "2023-06-12",
+      "location": "Barcelona, Spain",
+      "galleries": [
+        "favourites",
+        "trips/barcelona-2023",
+        "themes/architecture"
+      ],
+      "width": 4032,
+      "height": 3024
+    },
+    {
+      "id": "barcelona-002",
+      "r2Key": "photos/barcelona-2023/gothic-quarter.jpg",
+      "title": "Gothic Quarter Alley",
+      "description": "The narrow medieval streets of the Barri Gòtic",
+      "takenAt": "2023-06-13",
+      "location": "Barcelona, Spain",
+      "galleries": [
+        "trips/barcelona-2023",
+        "themes/cityscape"
+      ],
+      "width": 3024,
+      "height": 4032
+    }
+  ]
+}

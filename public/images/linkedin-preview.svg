@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#111118"/>
+  <circle cx="100" cy="100" r="80" fill="#0a66c220"/>
+  <!-- LinkedIn "in" mark -->
+  <rect x="52" y="52" width="96" height="96" rx="16" fill="#0a66c2"/>
+  <!-- Left column bar -->
+  <rect x="66" y="82" width="16" height="52" rx="2" fill="white"/>
+  <!-- Left column dot -->
+  <circle cx="74" cy="70" r="9" fill="white"/>
+  <!-- Right column -->
+  <rect x="90" y="82" width="16" height="52" rx="2" fill="white"/>
+  <!-- Right column curve start -->
+  <path d="M106 95 Q106 82 118 82 Q130 82 130 95 L130 134 L114 134 L114 98 Q114 96 112 96 Q110 96 110 98 L110 134 L106 134 Z" fill="white"/>
+</svg>

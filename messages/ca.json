@@ -1,0 +1,52 @@
+{
+  "Sidebar": {
+    "title": "Portfolio",
+    "navigation": "Navegació",
+    "github": "Projectes de GitHub",
+    "photography": "Fotografia",
+    "cv": "CV",
+    "footer": "Fet amb Next.js i Cloudflare R2"
+  },
+  "Home": {
+    "welcome": "Benvingut",
+    "githubTitle": "Projectes de GitHub",
+    "githubDescription": "Explora el meu treball de codi obert, projectes personals i experiments, sincronitzats en directe des de GitHub.",
+    "photographyTitle": "Fotografia",
+    "photographyDescription": "Una galeria de viatges, temàtiques i les meves fotos preferides, emmagatzemades a Cloudflare R2.",
+    "cvTitle": "CV",
+    "cvDescription": "La meva trajectòria professional, experiència i habilitats a LinkedIn."
+  },
+  "GitHub": {
+    "title": "Projectes de GitHub",
+    "repoCount": "{count, plural, one {# repositori públic} other {# repositoris públics}}",
+    "emptyHeading": "No s'han trobat repositoris",
+    "emptyHint": "Assegura't que GITHUB_USERNAME està configurat a les variables d'entorn."
+  },
+  "Photography": {
+    "title": "Fotografia",
+    "summary": "{photoCount, plural, one {# foto} other {# fotos}} en {galleryCount, plural, one {# galeria} other {# galeries}}",
+    "byTrip": "Per viatge",
+    "byTheme": "Per temàtica",
+    "allPhotosName": "Totes les fotos",
+    "allPhotosDescription": "Totes les fotos de la col·lecció",
+    "emptyHeading": "Encara no hi ha galeries",
+    "emptyHint": "Puja fotos al teu bucket de R2 — es descobriran automàticament."
+  },
+  "Gallery": {
+    "backLink": "Totes les galeries",
+    "photoCount": "{count, plural, one {# foto} other {# fotos}}",
+    "empty": "Encara no hi ha fotos en aquesta galeria."
+  },
+  "GalleryCard": {
+    "favourites": "Selecció",
+    "trips": "Viatges",
+    "themes": "Temàtica"
+  },
+  "Lightbox": {
+    "close": "Tancar",
+    "prev": "Foto anterior",
+    "next": "Foto següent",
+    "voteAlready": "Ja has votat",
+    "vote": "Votar aquesta foto"
+  }
+}
