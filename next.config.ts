@@ -47,6 +47,10 @@ export default withSentryConfig(withNextIntl(nextConfig), {
   sourcemaps: {
     deleteSourcemapsAfterUpload: true,
   },
-  disableLogger: true,
-  automaticVercelMonitors: true,
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+    automaticVercelMonitors: true,
+  },
 });
