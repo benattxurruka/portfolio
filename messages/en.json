@@ -27,6 +27,7 @@
     "summary": "{photoCount, plural, one {# photo} other {# photos}} across {galleryCount, plural, one {# gallery} other {# galleries}}",
     "byTrip": "By Trip",
     "byTheme": "By Theme",
+    "byTag": "By Tag",
     "allPhotosName": "All Photos",
     "allPhotosDescription": "All photos in the collection",
     "emptyHeading": "No galleries yet",

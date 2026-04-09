@@ -27,6 +27,7 @@
     "summary": "{photoCount, plural, one {# foto} other {# fotos}} en {galleryCount, plural, one {# galería} other {# galerías}}",
     "byTrip": "Por viaje",
     "byTheme": "Por temática",
+    "byTag": "Por etiqueta",
     "allPhotosName": "Todas las fotos",
     "allPhotosDescription": "Todas las fotos de la colección",
     "emptyHeading": "Aún no hay galerías",

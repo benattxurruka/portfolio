@@ -20,6 +20,8 @@ export interface Photo {
    *   - "themes/{slug}" e.g. "themes/cityscape"
    */
   galleries: string[];
+  /** Free-form tags, e.g. ["landscape", "golden-hour", "long-exposure"] */
+  tags?: string[];
   width?: number;
   height?: number;
 }

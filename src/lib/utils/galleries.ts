@@ -123,6 +123,26 @@ export function getGalleryPhotos(photos: Photo[], slug: string): Photo[] {
 }
 
 /**
+ * Collect every unique tag across all photos, sorted alphabetically.
+ */
+export function deriveTags(photos: Photo[]): string[] {
+  const set = new Set<string>();
+  for (const photo of photos) {
+    for (const tag of photo.tags ?? []) {
+      set.add(tag);
+    }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Return all photos that carry a specific tag.
+ */
+export function getPhotosByTag(photos: Photo[], tag: string): Photo[] {
+  return photos.filter((p) => p.tags?.includes(tag));
+}
+
+/**
  * Resolve a slug to a full Gallery object (with photos attached).
  */
 export function resolveGallery(

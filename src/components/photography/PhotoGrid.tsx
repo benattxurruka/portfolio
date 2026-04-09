@@ -17,6 +17,7 @@ export function PhotoGrid({ photos, onPhotoClick }: Props) {
         <button
           key={photo.id}
           onClick={() => onPhotoClick(index)}
+          onContextMenu={(e) => e.preventDefault()}
           className={cn(
             "relative overflow-hidden rounded-lg bg-surface-2 aspect-square",
             "hover:ring-2 hover:ring-accent/60 transition-all duration-200",
@@ -28,7 +29,8 @@ export function PhotoGrid({ photos, onPhotoClick }: Props) {
             src={getPhotoUrl(photo.r2Key)}
             alt={photo.title}
             fill
-            className="object-cover transition-transform duration-300 hover:scale-105"
+            draggable={false}
+            className="object-cover transition-transform duration-300 hover:scale-105 select-none"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             loading="lazy"
           />

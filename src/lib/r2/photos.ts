@@ -93,6 +93,9 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
         galleries:   m["galleries"]
           ? m["galleries"].split(",").map((g) => g.trim()).filter(Boolean)
           : [],
+        tags: m["tags"]
+          ? m["tags"].split(",").map((t) => t.trim()).filter(Boolean)
+          : undefined,
         width:  m["width"]  ? parseInt(m["width"],  10) : undefined,
         height: m["height"] ? parseInt(m["height"], 10) : undefined,
       };

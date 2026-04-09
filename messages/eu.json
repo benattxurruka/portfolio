@@ -27,6 +27,7 @@
     "summary": "{photoCount} argazki {galleryCount} galeriatan",
     "byTrip": "Bidaiaren arabera",
     "byTheme": "Gaiaren arabera",
+    "byTag": "Etiketaren arabera",
     "allPhotosName": "Argazki guztiak",
     "allPhotosDescription": "Bildumako argazki guztiak",
     "emptyHeading": "Oraindik ez dago galeriarik",

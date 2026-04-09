@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Camera } from "lucide-react";
+import Link from "next/link";
+import { Camera, Tag } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { getPhotos } from "@/lib/r2/photos";
-import { deriveGalleries } from "@/lib/utils/galleries";
+import { deriveGalleries, deriveTags } from "@/lib/utils/galleries";
 import { GalleryGrid } from "@/components/photography/GalleryGrid";
 import { recordPageView } from "@/lib/otel/metrics";
 
@@ -16,6 +17,7 @@ export default async function PhotographyPage() {
   try { recordPageView("photography"); } catch {}
   const [photos, t] = await Promise.all([getPhotos(), getTranslations("Photography")]);
 
+  const tags = deriveTags(photos);
   const galleries = deriveGalleries(photos, {
     allPhotosName: t("allPhotosName"),
     allPhotosDescription: t("allPhotosDescription"),
@@ -62,6 +64,29 @@ export default async function PhotographyPage() {
             {t("byTheme")}
           </h2>
           <GalleryGrid galleries={themes} />
+        </section>
+      )}
+
+      {tags.length > 0 && (
+        <section className="mb-12">
+          <h2 className="text-sm font-medium text-ink-muted uppercase tracking-widest mb-5 flex items-center gap-2">
+            <Tag className="w-3.5 h-3.5" />
+            {t("byTag")}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <Link
+                key={tag}
+                href={`/photography/tag/${encodeURIComponent(tag)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm
+                           bg-surface-2 border border-border text-ink-secondary
+                           hover:border-accent hover:text-accent transition-colors"
+              >
+                <Tag className="w-3 h-3" />
+                {tag}
+              </Link>
+            ))}
+          </div>
         </section>
       )}
 

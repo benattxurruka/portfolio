@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, MapPin, Calendar, Heart } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
@@ -64,6 +64,12 @@ export function Lightbox({
 }: Props) {
   const t = useTranslations("Lightbox");
   const locale = useLocale();
+  const [isImageLoading, setIsImageLoading] = useState(true);
+
+  // Reset loading state whenever the photo changes
+  useEffect(() => {
+    setIsImageLoading(true);
+  }, [currentPhoto.id]);
 
   usePhotoTimer(currentPhoto.id);
 
@@ -113,15 +119,43 @@ export function Lightbox({
           <ChevronLeft className="w-6 h-6" />
         </button>
 
-        <div className="relative w-full h-full">
+        <div
+          className="relative w-full h-full"
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {isImageLoading && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <svg
+                className="w-10 h-10 animate-spin text-white/50"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12" cy="12" r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+            </div>
+          )}
           <Image
             key={currentPhoto.id}
             src={photoUrl}
             alt={currentPhoto.title}
             fill
-            className="object-contain animate-fade-in"
+            draggable={false}
+            className={cn("object-contain animate-fade-in select-none", isImageLoading && "opacity-0")}
             sizes="(orientation: portrait) 100vw, 90vw"
             priority
+            onLoad={() => setIsImageLoading(false)}
           />
         </div>
 
