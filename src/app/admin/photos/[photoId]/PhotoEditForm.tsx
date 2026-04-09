@@ -18,6 +18,7 @@ function Field({
   placeholder,
   hint,
   type = "text",
+  step,
   textarea,
 }: {
   label: string;
@@ -26,6 +27,7 @@ function Field({
   placeholder?: string;
   hint?: string;
   type?: string;
+  step?: string;
   textarea?: boolean;
 }) {
   const base =
@@ -52,6 +54,7 @@ function Field({
           type={type}
           defaultValue={defaultValue}
           placeholder={placeholder}
+          step={step}
           className={base}
         />
       )}
@@ -181,6 +184,7 @@ export function PhotoEditForm({ photo, action }: Props) {
           label="Latitude"
           name="lat"
           type="number"
+          step="any"
           defaultValue={photo.lat?.toString()}
           placeholder="43.2630"
           hint="Decimal degrees. Enables the map."
@@ -189,6 +193,7 @@ export function PhotoEditForm({ photo, action }: Props) {
           label="Longitude"
           name="lng"
           type="number"
+          step="any"
           defaultValue={photo.lng?.toString()}
           placeholder="-2.9350"
         />
