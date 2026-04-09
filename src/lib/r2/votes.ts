@@ -27,19 +27,8 @@ export async function getVotes(): Promise<VoteMap> {
   }
 }
 
-/**
- * Atomically increment the vote count for a photo.
- *
- * Note: R2 does not support conditional writes, so at very high concurrency
- * two simultaneous increments could cause a lost update. For a personal
- * portfolio this is an acceptable trade-off.
- */
-export async function incrementVote(photoId: string): Promise<number> {
+async function writeVotes(votes: VoteMap): Promise<void> {
   const client = getR2Client();
-  const votes = await getVotes();
-  const newCount = (votes[photoId] ?? 0) + 1;
-  votes[photoId] = newCount;
-
   await client.send(
     new PutObjectCommand({
       Bucket: BUCKET,
@@ -48,6 +37,20 @@ export async function incrementVote(photoId: string): Promise<number> {
       ContentType: "application/json",
     })
   );
+}
 
+export async function incrementVote(photoId: string): Promise<number> {
+  const votes = await getVotes();
+  const newCount = (votes[photoId] ?? 0) + 1;
+  votes[photoId] = newCount;
+  await writeVotes(votes);
+  return newCount;
+}
+
+export async function decrementVote(photoId: string): Promise<number> {
+  const votes = await getVotes();
+  const newCount = Math.max(0, (votes[photoId] ?? 0) - 1);
+  votes[photoId] = newCount;
+  await writeVotes(votes);
   return newCount;
 }

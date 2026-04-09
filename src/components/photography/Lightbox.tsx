@@ -61,7 +61,7 @@ function VoteButton({
   return (
     <button
       onClick={vote}
-      disabled={hasVoted || isPending}
+      disabled={isPending}
       className={cn(
         "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 shrink-0",
         hasVoted

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { voteForPhoto } from "@/actions/vote";
+import { voteForPhoto, unvoteForPhoto } from "@/actions/vote";
 
 const STORAGE_PREFIX = "portfolio:voted:";
 
@@ -25,35 +25,43 @@ export function useVote(
     }
   }, [photoId]);
 
-  function vote() {
-    if (hasVoted || isPending) return;
+  function toggle() {
+    if (isPending) return;
 
-    // Optimistic update
-    setHasVoted(true);
-    setCount((c) => c + 1);
+    if (hasVoted) {
+      // Optimistic unvote
+      setHasVoted(false);
+      setCount((c) => Math.max(0, c - 1));
+      try { localStorage.removeItem(`${STORAGE_PREFIX}${photoId}`); } catch {}
 
-    try {
-      localStorage.setItem(`${STORAGE_PREFIX}${photoId}`, "true");
-    } catch {
-      // ignore
-    }
-
-    startTransition(async () => {
-      const result = await voteForPhoto(photoId, gallerySlug);
-      if (!result.success) {
-        // Rollback on error
-        setHasVoted(false);
-        setCount((c) => c - 1);
-        try {
-          localStorage.removeItem(`${STORAGE_PREFIX}${photoId}`);
-        } catch {
-          // ignore
+      startTransition(async () => {
+        const result = await unvoteForPhoto(photoId, gallerySlug);
+        if (!result.success) {
+          setHasVoted(true);
+          setCount((c) => c + 1);
+          try { localStorage.setItem(`${STORAGE_PREFIX}${photoId}`, "true"); } catch {}
+        } else if (result.newCount !== undefined) {
+          setCount(result.newCount);
         }
-      } else if (result.newCount !== undefined) {
-        setCount(result.newCount);
-      }
-    });
+      });
+    } else {
+      // Optimistic vote
+      setHasVoted(true);
+      setCount((c) => c + 1);
+      try { localStorage.setItem(`${STORAGE_PREFIX}${photoId}`, "true"); } catch {}
+
+      startTransition(async () => {
+        const result = await voteForPhoto(photoId, gallerySlug);
+        if (!result.success) {
+          setHasVoted(false);
+          setCount((c) => Math.max(0, c - 1));
+          try { localStorage.removeItem(`${STORAGE_PREFIX}${photoId}`); } catch {}
+        } else if (result.newCount !== undefined) {
+          setCount(result.newCount);
+        }
+      });
+    }
   }
 
-  return { hasVoted, count, vote, isPending };
+  return { hasVoted, count, vote: toggle, isPending };
 }
