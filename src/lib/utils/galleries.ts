@@ -127,13 +127,15 @@ export function getGalleryPhotos(photos: Photo[], slug: string): Photo[] {
  * Collect every unique tag across all photos, sorted alphabetically.
  */
 export function deriveTags(photos: Photo[]): string[] {
-  const set = new Set<string>();
+  const counts = new Map<string, number>();
   for (const photo of photos) {
     for (const tag of photo.tags ?? []) {
-      set.add(tag);
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
   }
-  return [...set].sort((a, b) => a.localeCompare(b));
+  return [...counts.keys()].sort(
+    (a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b)
+  );
 }
 
 /**
