@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   X, ChevronLeft, ChevronRight, Info,
@@ -92,6 +92,7 @@ export function Lightbox({
   const locale = useLocale();
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
+  const touchStartX = useRef<number | null>(null);
 
   // Reset loading state whenever the photo changes
   useEffect(() => {
@@ -162,7 +163,17 @@ export function Lightbox({
       </div>
 
       {/* ── Image area ────────────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 relative flex items-center justify-center landscape:px-16">
+      <div
+        className="flex-1 min-h-0 relative flex items-center justify-center landscape:px-16"
+        onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (touchStartX.current === null) return;
+          const delta = e.changedTouches[0].clientX - touchStartX.current;
+          touchStartX.current = null;
+          if (Math.abs(delta) < 50) return; // ignore taps / micro-swipes
+          if (delta < 0) onNext(); else onPrev();
+        }}
+      >
         {/* Side nav — landscape & desktop only */}
         <button
           onClick={onPrev}
