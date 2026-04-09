@@ -33,7 +33,9 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
           ? "trips"
           : key.startsWith("themes/")
           ? "themes"
-          : "favourites";
+          : key === "favourites"
+          ? "favourites"
+          : "trips"; // plain folder key (e.g. "japan-2024") → trips by default
         map.set(key, { type, photos: [] });
       }
       map.get(key)!.photos.push(photo);
@@ -79,22 +81,18 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
     });
   }
 
-  // ── Fallback: "All Photos" for photos with no gallery membership ──────────
-  // When objects in R2 have no x-amz-meta-galleries metadata every photo ends
-  // up with galleries:[] and deriveGalleries would return an empty list.
-  // Surface them under a synthetic "all" gallery so they're always visible.
-  const assignedIds = new Set(galleries.flatMap((g) => g.id === "favourites" ? ["favourites"] : [`${g.type}/${g.slug}`]));
-  const unassigned = photos.filter((p) => p.galleries.length === 0 || p.galleries.every((key) => !assignedIds.has(key)));
-
-  if (unassigned.length > 0 && galleries.length === 0) {
+  // ── "All Photos" gallery — always present ────────────────────────────────
+  // Shown regardless of whether other galleries exist, so visitors always have
+  // a single place to browse every photo in the collection.
+  if (photos.length > 0) {
     galleries.push({
       id: "all",
       slug: "all",
       name: options.allPhotosName ?? "All Photos",
       description: options.allPhotosDescription ?? "All photos in the collection",
       type: "themes",
-      coverPhoto: unassigned[0],
-      photoCount: unassigned.length,
+      coverPhoto: photos[0],
+      photoCount: photos.length,
     });
   }
 
@@ -113,12 +111,15 @@ export function getGalleryPhotos(photos: Photo[], slug: string): Photo[] {
     return photos.filter((p) => p.galleries.includes("favourites"));
   }
 
-  // Try trips first, then themes
+  // Match typed keys (trips/slug, themes/slug) and plain folder keys (slug)
   const tripsKey = `trips/${slug}`;
   const themesKey = `themes/${slug}`;
 
   return photos.filter(
-    (p) => p.galleries.includes(tripsKey) || p.galleries.includes(themesKey)
+    (p) =>
+      p.galleries.includes(tripsKey) ||
+      p.galleries.includes(themesKey) ||
+      p.galleries.includes(slug) // plain folder key, e.g. "japan-2024"
   );
 }
 

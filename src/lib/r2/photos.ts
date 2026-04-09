@@ -11,6 +11,34 @@ const PHOTOS_PREFIX = "";
 const IMAGE_RE = /\.(jpe?g|png|webp|avif|gif)$/i;
 
 /**
+ * Derive a gallery key from the folder structure of an R2 object key.
+ * Returns null for root-level objects (no subfolder).
+ *
+ * Rules:
+ *   "japan-2024/sunset.jpg"          → "japan-2024"        (plain folder key)
+ *   "trips/japan-2024/sunset.jpg"    → "trips/japan-2024"  (typed two-level)
+ *   "themes/nature/sunset.jpg"       → "themes/nature"     (typed two-level)
+ *   "favourites/portrait.jpg"        → "favourites"
+ *   "trips/sunset.jpg"               → null  (type prefix with no gallery name)
+ *   "themes/sunset.jpg"              → null
+ *   "sunset.jpg"                     → null  (root level)
+ */
+function deriveFolderGalleryKey(r2Key: string): string | null {
+  const parts = r2Key.split("/");
+  if (parts.length < 2) return null;
+
+  const first = parts[0];
+
+  // Recognised type prefixes — only valid when there is a gallery name below them
+  if (first === "trips" || first === "themes") {
+    return parts.length >= 3 ? `${first}/${parts[1]}` : null;
+  }
+
+  // Any other top-level folder (e.g. "japan-2024", "favourites")
+  return first;
+}
+
+/**
  * Discover every photo in the R2 bucket and build Photo objects from their
  * custom metadata headers.
  *
@@ -90,9 +118,24 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
         description: m["description"] ?? undefined,
         takenAt:     m["taken-at"]    ?? undefined,
         location:    m["location"]    ?? undefined,
-        galleries:   m["galleries"]
-          ? m["galleries"].split(",").map((g) => g.trim()).filter(Boolean)
-          : [],
+        galleries: (() => {
+          const meta: string[] = m["galleries"]
+            ? m["galleries"].split(",").map((g) => g.trim()).filter(Boolean)
+            : [];
+
+          // Auto-add a gallery derived from the folder path, unless the
+          // metadata already covers a gallery with the same slug.
+          const folderKey = deriveFolderGalleryKey(key);
+          if (folderKey) {
+            const folderSlug = folderKey.split("/").pop()!;
+            const covered = meta.some(
+              (g) => g === folderKey || (g.split("/").pop() ?? g) === folderSlug
+            );
+            if (!covered) meta.push(folderKey);
+          }
+
+          return meta;
+        })(),
         tags: m["tags"]
           ? m["tags"].split(",").map((t) => t.trim()).filter(Boolean)
           : undefined,

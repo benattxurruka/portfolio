@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
-  X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  X, ChevronLeft, ChevronRight, Info,
   MapPin, Calendar, Heart, Tag,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
@@ -144,11 +144,7 @@ export function Lightbox({
             aria-label={showInfo ? t("hideInfo") : t("showInfo")}
             aria-expanded={showInfo}
           >
-            {showInfo ? (
-              <ChevronDown className="w-5 h-5" />
-            ) : (
-              <ChevronUp className="w-5 h-5" />
-            )}
+            <Info className="w-5 h-5" />
             {/* Dot indicator when there is info but panel is closed */}
             {!showInfo && hasInfo && (
               <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent" />
