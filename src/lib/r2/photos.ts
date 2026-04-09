@@ -96,6 +96,8 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
         tags: m["tags"]
           ? m["tags"].split(",").map((t) => t.trim()).filter(Boolean)
           : undefined,
+        lat: m["lat"] ? parseFloat(m["lat"]) : undefined,
+        lng: m["lng"] ? parseFloat(m["lng"]) : undefined,
         width:  m["width"]  ? parseInt(m["width"],  10) : undefined,
         height: m["height"] ? parseInt(m["height"], 10) : undefined,
       };
@@ -126,6 +128,7 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
  */
 export const getPhotos = unstable_cache(fetchPhotosFromR2, ["r2-photos"], {
   revalidate: 300,
+  tags: ["r2-photos"],
 });
 
 /**

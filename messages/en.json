@@ -48,6 +48,8 @@
     "prev": "Previous photo",
     "next": "Next photo",
     "voteAlready": "Already voted",
-    "vote": "Vote for this photo"
+    "vote": "Vote for this photo",
+    "showInfo": "Show photo info",
+    "hideInfo": "Hide photo info"
   }
 }

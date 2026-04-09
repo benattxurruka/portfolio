@@ -48,6 +48,8 @@
     "prev": "Foto anterior",
     "next": "Foto següent",
     "voteAlready": "Ja has votat",
-    "vote": "Votar aquesta foto"
+    "vote": "Votar aquesta foto",
+    "showInfo": "Mostrar info de la foto",
+    "hideInfo": "Amagar info de la foto"
   }
 }

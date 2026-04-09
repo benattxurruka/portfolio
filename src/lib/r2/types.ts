@@ -22,6 +22,10 @@ export interface Photo {
   galleries: string[];
   /** Free-form tags, e.g. ["landscape", "golden-hour", "long-exposure"] */
   tags?: string[];
+  /** GPS latitude in decimal degrees (e.g. 43.2630) */
+  lat?: number;
+  /** GPS longitude in decimal degrees (e.g. -2.9350) */
+  lng?: number;
   width?: number;
   height?: number;
 }

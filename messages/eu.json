@@ -48,6 +48,8 @@
     "prev": "Aurreko argazkia",
     "next": "Hurrengo argazkia",
     "voteAlready": "Dagoeneko bozkatu duzu",
-    "vote": "Argazki hau bozkatu"
+    "vote": "Argazki hau bozkatu",
+    "showInfo": "Argazkiaren informazioa erakutsi",
+    "hideInfo": "Argazkiaren informazioa ezkutatu"
   }
 }
