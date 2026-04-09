@@ -44,6 +44,14 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
 
   const galleries: Gallery[] = [];
 
+  /** Pick the designated cover photo for a gallery, falling back to the first photo. */
+  function pickCover(key: string, slug: string, photos: Photo[]): Photo | undefined {
+    return (
+      photos.find((p) => p.coverFor?.includes(key) || p.coverFor?.includes(slug)) ??
+      photos[0]
+    );
+  }
+
   // Always show Favourites first
   if (map.has("favourites")) {
     const entry = map.get("favourites")!;
@@ -53,7 +61,7 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
       name: "My Favourites",
       description: "A curated selection of my best shots",
       type: "favourites",
-      coverPhoto: entry.photos[0],
+      coverPhoto: pickCover("favourites", "favourites", entry.photos),
       photoCount: entry.photos.length,
     });
     map.delete("favourites");
@@ -76,7 +84,7 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
           ? `Photos from ${name}`
           : `${name} photography`,
       type: entry.type,
-      coverPhoto: entry.photos[0],
+      coverPhoto: pickCover(key, slug, entry.photos),
       photoCount: entry.photos.length,
     });
   }

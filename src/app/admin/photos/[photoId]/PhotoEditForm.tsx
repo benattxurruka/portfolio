@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Star } from "lucide-react";
 import type { Photo } from "@/lib/r2/types";
 import type { UpdatePhotoState } from "@/actions/updatePhoto";
+import { cn } from "@/lib/utils/cn";
 
 interface Props {
   photo: Photo;
@@ -57,6 +59,84 @@ function Field({
     </div>
   );
 }
+
+// ── Gallery cover picker ──────────────────────────────────────────────────────
+
+function GalleriesField({ photo }: { photo: Photo }) {
+  // Galleries the photo explicitly belongs to (via metadata, not auto-derived from folder)
+  const metaGalleries = photo.galleries;
+  const [coverFor, setCoverFor] = useState<Set<string>>(
+    new Set(photo.coverFor ?? [])
+  );
+
+  function toggleCover(galleryId: string) {
+    setCoverFor((prev) => {
+      const next = new Set(prev);
+      if (next.has(galleryId)) next.delete(galleryId);
+      else next.add(galleryId);
+      return next;
+    });
+  }
+
+  const coverForValue = [...coverFor].join(", ");
+
+  return (
+    <div className="space-y-3">
+      {/* Editable galleries membership */}
+      <Field
+        label="Galleries"
+        name="galleries"
+        defaultValue={metaGalleries.join(", ")}
+        placeholder="favourites, trips/japan-2024, themes/cityscape"
+        hint="Comma-separated gallery IDs this photo belongs to."
+      />
+
+      {/* Cover photo picker */}
+      <div>
+        <p className="block text-sm text-ink-secondary mb-1">Cover photo for</p>
+
+        {metaGalleries.length === 0 ? (
+          <p className="text-xs text-ink-muted">
+            Add the photo to at least one gallery above to set it as a cover.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {metaGalleries.map((id) => {
+              const slug = id.split("/").pop() ?? id;
+              const isCover = coverFor.has(id) || coverFor.has(slug);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => toggleCover(id)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                    isCover
+                      ? "bg-accent/20 border-accent text-accent"
+                      : "bg-surface-2 border-border text-ink-muted hover:border-accent/50 hover:text-ink-secondary"
+                  )}
+                  title={isCover ? `Remove cover for ${id}` : `Set as cover for ${id}`}
+                >
+                  <Star className={cn("w-3 h-3", isCover && "fill-accent")} />
+                  {slug}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <p className="text-xs text-ink-muted mt-1">
+          Starred galleries will use this photo as their preview image on the Photography page.
+        </p>
+
+        {/* Hidden field carries the serialised value */}
+        <input type="hidden" name="coverFor" value={coverForValue} />
+      </div>
+    </div>
+  );
+}
+
+// ── Main form ─────────────────────────────────────────────────────────────────
 
 export function PhotoEditForm({ photo, action }: Props) {
   const [state, formAction, isPending] = useActionState(action, {});
@@ -114,13 +194,7 @@ export function PhotoEditForm({ photo, action }: Props) {
         />
       </div>
 
-      <Field
-        label="Galleries"
-        name="galleries"
-        defaultValue={photo.galleries.join(", ")}
-        placeholder="favourites, trips/japan-2024, themes/cityscape"
-        hint="Comma-separated gallery keys."
-      />
+      <GalleriesField photo={photo} />
 
       {state.error && (
         <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{state.error}</p>

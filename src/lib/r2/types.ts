@@ -22,6 +22,12 @@ export interface Photo {
   galleries: string[];
   /** Free-form tags, e.g. ["landscape", "golden-hour", "long-exposure"] */
   tags?: string[];
+  /**
+   * Gallery IDs for which this photo is the designated cover image.
+   * Matched against gallery id or slug during deriveGalleries.
+   * e.g. ["japan-2024", "favourites"]
+   */
+  coverFor?: string[];
   /** GPS latitude in decimal degrees (e.g. 43.2630) */
   lat?: number;
   /** GPS longitude in decimal degrees (e.g. -2.9350) */

@@ -139,6 +139,9 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
         tags: m["tags"]
           ? m["tags"].split(",").map((t) => t.trim()).filter(Boolean)
           : undefined,
+        coverFor: m["cover-for"]
+          ? m["cover-for"].split(",").map((c) => c.trim()).filter(Boolean)
+          : undefined,
         lat: m["lat"] ? parseFloat(m["lat"]) : undefined,
         lng: m["lng"] ? parseFloat(m["lng"]) : undefined,
         width:  m["width"]  ? parseInt(m["width"],  10) : undefined,

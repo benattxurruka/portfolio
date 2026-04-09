@@ -25,12 +25,19 @@ export async function updatePhoto(
   const lng = (formData.get("lng") as string).trim();
 
   try {
+    const coverFor = (formData.get("coverFor") as string)
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .join(",");
+
     await updatePhotoMetadata(r2Key, {
       title:       (formData.get("title") as string).trim() || undefined,
       description: (formData.get("description") as string).trim() || undefined,
       tags:        tags || undefined,
       location:    (formData.get("location") as string).trim() || undefined,
       galleries:   (formData.get("galleries") as string).trim() || undefined,
+      "cover-for": coverFor || undefined,
       lat:         lat || undefined,
       lng:         lng || undefined,
     });
