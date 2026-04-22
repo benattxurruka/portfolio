@@ -18,8 +18,8 @@ export async function GET() {
     "X-GitHub-Api-Version": "2022-11-28",
   };
 
-  if (process.env.GITHUB_TOKEN) {
-    headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
+  if (process.env.GH_TOKEN) {
+    headers["Authorization"] = `Bearer ${process.env.GH_TOKEN}`;
   }
 
   try {
