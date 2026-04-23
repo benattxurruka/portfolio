@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import type { GitHubRepo } from "@/lib/r2/types";
 import { logger } from "@/lib/otel/logger";
 
@@ -32,9 +33,11 @@ export async function GET() {
     );
 
     if (!response.ok) {
-      logger.error("[github] API request failed", {
-        status: response.status,
-        username,
+      const msg = `[github] API request failed with status ${response.status}`;
+      logger.error(msg, { status: response.status, username });
+      Sentry.captureMessage(msg, {
+        level: "error",
+        extra: { status: response.status, username },
       });
       return NextResponse.json(
         { error: `GitHub API returned ${response.status}` },
@@ -54,6 +57,7 @@ export async function GET() {
     });
   } catch (err) {
     logger.error("[github] Failed to fetch repos", { error: String(err) });
+    Sentry.captureException(err);
     return NextResponse.json(
       { error: "Failed to fetch repositories" },
       { status: 500 }
