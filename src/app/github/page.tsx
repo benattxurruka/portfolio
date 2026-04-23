@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Github, ExternalLink } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import * as Sentry from "@sentry/nextjs";
 import { RepoGrid } from "@/components/github/RepoGrid";
 import { recordPageView } from "@/lib/otel/metrics";
+import { logger } from "@/lib/otel/logger";
 import type { GitHubRepo } from "@/lib/r2/types";
 
 export const metadata: Metadata = {
@@ -19,9 +21,19 @@ async function getRepos(): Promise<GitHubRepo[]> {
       next: { revalidate: 3600 },
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      logger.error("[github] page: API returned error", { status: res.status, body });
+      Sentry.captureMessage(`GitHub repos API returned ${res.status}`, {
+        level: "error",
+        extra: { body },
+      });
+      return [];
+    }
     return res.json();
-  } catch {
+  } catch (err) {
+    logger.error("[github] page: failed to fetch repos", { error: String(err) });
+    Sentry.captureException(err);
     return [];
   }
 }
