@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { RepoGrid } from "@/components/github/RepoGrid";
 import { recordPageView } from "@/lib/otel/metrics";
 import { logger } from "@/lib/otel/logger";
+import { fetchGitHubRepos } from "@/lib/github/repos";
 import type { GitHubRepo } from "@/lib/r2/types";
 
 export const metadata: Metadata = {
@@ -13,24 +14,7 @@ export const metadata: Metadata = {
 
 async function getRepos(): Promise<GitHubRepo[]> {
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-
-    const res = await fetch(`${baseUrl}/api/github`, {
-      next: { revalidate: 3600 },
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      logger.error("[github] page: API returned error", { status: res.status, body });
-      Sentry.captureMessage(`GitHub repos API returned ${res.status}`, {
-        level: "error",
-        extra: { body },
-      });
-      return [];
-    }
-    return res.json();
+    return await fetchGitHubRepos();
   } catch (err) {
     logger.error("[github] page: failed to fetch repos", { error: String(err) });
     Sentry.captureException(err);
