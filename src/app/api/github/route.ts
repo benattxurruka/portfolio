@@ -19,8 +19,17 @@ export async function GET() {
     "X-GitHub-Api-Version": "2022-11-28",
   };
 
-  if (process.env.GH_TOKEN) {
-    headers["Authorization"] = `Bearer ${process.env.GH_TOKEN}`;
+  const rawToken = process.env.GH_TOKEN;
+  logger.info("[github] token debug", {
+    present: !!rawToken,
+    length: rawToken?.length ?? 0,
+    prefix: rawToken?.slice(0, 4) ?? "",
+    hasLeadingSpace: rawToken?.startsWith(" ") ?? false,
+    hasTrailingSpace: rawToken?.endsWith(" ") ?? false,
+  });
+
+  if (rawToken) {
+    headers["Authorization"] = `Bearer ${rawToken.trim()}`;
   }
 
   try {
