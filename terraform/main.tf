@@ -9,7 +9,7 @@ resource "grafana_folder" "portfolio" {
 # Photo metrics dashboard
 # ---------------------------------------------------------------------------
 resource "grafana_dashboard" "photo_metrics" {
-  folder      = grafana_folder.portfolio.uid
+  folder = grafana_folder.portfolio.uid
   config_json = templatefile("${path.module}/dashboards/photo_metrics.json", {
     prometheus_ds_uid = var.prometheus_datasource_uid
     loki_ds_uid       = var.loki_datasource_uid
@@ -20,7 +20,7 @@ resource "grafana_dashboard" "photo_metrics" {
 # App overview dashboard
 # ---------------------------------------------------------------------------
 resource "grafana_dashboard" "app_overview" {
-  folder      = grafana_folder.portfolio.uid
+  folder = grafana_folder.portfolio.uid
   config_json = templatefile("${path.module}/dashboards/app_overview.json", {
     prometheus_ds_uid = var.prometheus_datasource_uid
     loki_ds_uid       = var.loki_datasource_uid
