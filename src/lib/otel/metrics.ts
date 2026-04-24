@@ -79,3 +79,20 @@ export function recordPageView(page: string): void {
   }
   _pageViewCounter.add(1, { page });
 }
+
+let _sessionLanguageCounter: ReturnType<
+  ReturnType<typeof getMeter>["createCounter"]
+> | null = null;
+
+/** Increment on each request to track which locale is active */
+export function recordSessionLanguage(locale: string): void {
+  if (!_sessionLanguageCounter) {
+    _sessionLanguageCounter = getMeter().createCounter(
+      "portfolio.session.language",
+      {
+        description: "Number of requests per locale",
+      }
+    );
+  }
+  _sessionLanguageCounter.add(1, { locale });
+}

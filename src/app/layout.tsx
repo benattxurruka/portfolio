@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import "./globals.css";
+import { recordSessionLanguage } from "@/lib/otel/metrics";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
@@ -25,8 +26,13 @@ export default async function RootLayout({
   const [locale, messages, cookieStore] = await Promise.all([
     getLocale(),
     getMessages(),
-    cookies(),
+    await cookies(),
   ]);
+
+  // Derive the initial html class server-side to reduce flash on first load.
+  // "system" (and no cookie) cannot be resolved server-side — leave the class
+  // empty and let ThemeScript correct it client-side before first paint.
+  recordSessionLanguage(locale);
 
   // Derive the initial html class server-side to reduce flash on first load.
   // "system" (and no cookie) cannot be resolved server-side — leave the class
