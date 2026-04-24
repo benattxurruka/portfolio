@@ -70,10 +70,29 @@
       ]
     },
     {
+      "id": 6,
+      "title": "Sessions by Language",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum by (locale) (increase(portfolio_session_language_total[$__range]))",
+          "legendFormat": "{{locale}}",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "percent"]
+      }
+    },
+    {
       "id": 5,
       "title": "Traces",
       "type": "traces",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 16 },
       "datasource": { "type": "tempo", "uid": "${tempo_ds_uid}" },
       "targets": [
         {
