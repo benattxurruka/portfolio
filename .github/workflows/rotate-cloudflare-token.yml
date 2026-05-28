@@ -1,0 +1,127 @@
+name: Rotate Cloudflare R2 Token
+
+# Runs on the 1st of every month at 08:00 UTC.
+# Can also be triggered manually from the Actions tab.
+on:
+  schedule:
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+
+jobs:
+  rotate:
+    name: Rotate R2 API Token
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      actions: write  # needed to dispatch the deploy workflow after rotation
+
+    steps:
+      # ── 1. Create new Cloudflare R2 token ──────────────────────────────────
+      - name: Rotate Cloudflare R2 token
+        id: cf
+        env:
+          CF_ACCOUNT_ID:  ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ADMIN_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_TOKEN }}
+          R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+        run: |
+          TOKEN_NAME="portfolio-r2-rotating"
+          BASE_URL="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/tokens"
+          AUTH_HEADER="Authorization: Bearer ${CF_ADMIN_TOKEN}"
+
+          # Revoke the previous rotating token (ignore errors if it doesn't exist)
+          OLD_ID=$(curl -sf "${BASE_URL}" -H "${AUTH_HEADER}" \
+            | jq -r --arg name "$TOKEN_NAME" '.result[] | select(.name == $name) | .id // empty' \
+            | head -1)
+
+          if [ -n "$OLD_ID" ]; then
+            curl -sf -X DELETE "${BASE_URL}/${OLD_ID}" -H "${AUTH_HEADER}"
+            echo "Revoked old token (${OLD_ID})"
+          else
+            echo "No previous rotating token found — skipping revocation"
+          fi
+
+          # Create a new token valid for 40 days.
+          # The workflow runs monthly (31-day max gap), so this gives a 9-day buffer.
+          # Adjust permissions/buckets to match your R2 setup if needed.
+          RESPONSE=$(curl -sf -X POST "${BASE_URL}" \
+            -H "${AUTH_HEADER}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"name\": \"${TOKEN_NAME}\",
+              \"permissions\": [\"admin:read\", \"admin:write\"],
+              \"buckets\": [{\"bucketName\": \"${R2_BUCKET_NAME}\"}],
+              \"ttlSeconds\": 3456000
+            }")
+
+          ACCESS_KEY=$(echo "$RESPONSE" | jq -r '.result.accessKeyId')
+          SECRET_KEY=$(echo "$RESPONSE" | jq -r '.result.secretAccessKey')
+
+          if [ "$ACCESS_KEY" = "null" ] || [ -z "$ACCESS_KEY" ]; then
+            echo "ERROR: Token creation failed. Cloudflare response:"
+            echo "$RESPONSE" | jq .
+            exit 1
+          fi
+
+          # Mask values so they never appear in plain text in any log line
+          echo "::add-mask::$ACCESS_KEY"
+          echo "::add-mask::$SECRET_KEY"
+
+          echo "ACCESS_KEY_ID=$ACCESS_KEY"    >> "$GITHUB_OUTPUT"
+          echo "SECRET_ACCESS_KEY=$SECRET_KEY" >> "$GITHUB_OUTPUT"
+          echo "New R2 token created successfully"
+
+      # ── 2. Propagate new credentials to Vercel ─────────────────────────────
+      - name: Update Vercel environment variables
+        env:
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NEW_ACCESS_KEY:    ${{ steps.cf.outputs.ACCESS_KEY_ID }}
+          NEW_SECRET_KEY:    ${{ steps.cf.outputs.SECRET_ACCESS_KEY }}
+        run: |
+          BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
+          AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
+
+          # Upsert a single env var: PATCH if it already exists, POST if new.
+          upsert_env() {
+            local KEY="$1"
+            local VAL="$2"
+
+            local EXISTING_ID
+            EXISTING_ID=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" \
+              | jq -r --arg k "$KEY" '.envs[] | select(.key == $k and (.target | contains(["production"]))) | .id // empty' \
+              | head -1)
+
+            if [ -n "$EXISTING_ID" ]; then
+              curl -sf -X PATCH "${BASE}/${EXISTING_ID}?teamId=${VERCEL_TEAM_ID}" \
+                -H "$AUTH" -H "Content-Type: application/json" \
+                -d "{\"value\": \"$VAL\"}" > /dev/null
+              echo "Updated $KEY in Vercel (production)"
+            else
+              curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+                -H "$AUTH" -H "Content-Type: application/json" \
+                -d "{
+                  \"key\": \"$KEY\",
+                  \"value\": \"$VAL\",
+                  \"type\": \"sensitive\",
+                  \"target\": [\"production\"]
+                }" > /dev/null
+              echo "Created $KEY in Vercel (production)"
+            fi
+          }
+
+          upsert_env "R2_ACCESS_KEY_ID"     "$NEW_ACCESS_KEY"
+          upsert_env "R2_SECRET_ACCESS_KEY" "$NEW_SECRET_KEY"
+
+      # ── 3. Redeploy so Vercel picks up the new env vars ────────────────────
+      - name: Trigger production redeploy
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/dispatches" \
+            -d '{"ref": "main"}'
+          echo "Deploy workflow dispatched on main"
