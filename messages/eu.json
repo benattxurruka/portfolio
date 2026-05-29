@@ -50,6 +50,10 @@
     "voteAlready": "Dagoeneko bozkatu duzu",
     "vote": "Argazki hau bozkatu",
     "showInfo": "Argazkiaren informazioa erakutsi",
-    "hideInfo": "Argazkiaren informazioa ezkutatu"
+    "hideInfo": "Argazkiaren informazioa ezkutatu",
+    "play": "Aurkezpena hasi",
+    "pause": "Aurkezpena pausatu",
+    "cast": "Telebistara bidali",
+    "stopCast": "Emisioa gelditu"
   }
 }

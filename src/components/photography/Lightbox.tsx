@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   X, ChevronLeft, ChevronRight, Info,
-  MapPin, Calendar, Heart, Tag,
+  MapPin, Calendar, Heart, Tag, Play, Pause, Cast,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import type { Photo, VoteMap } from "@/lib/r2/types";
 import { getPhotoUrl } from "@/lib/r2/photos";
 import { useVote } from "@/hooks/useVote";
 import { usePhotoTimer } from "@/hooks/usePhotoTimer";
+import { useCast } from "@/hooks/useCast";
+import { SLIDESHOW_DELAY } from "@/hooks/useLightbox";
 import { recordView } from "@/actions/view";
 import { cn } from "@/lib/utils/cn";
 
@@ -23,6 +25,8 @@ interface Props {
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -87,6 +91,8 @@ export function Lightbox({
   onClose,
   onNext,
   onPrev,
+  isPlaying,
+  onTogglePlay,
 }: Props) {
   const t = useTranslations("Lightbox");
   const locale = useLocale();
@@ -115,8 +121,15 @@ export function Lightbox({
     recordView(currentPhoto.id, gallerySlug).catch(() => {});
   }, [currentPhoto.id, gallerySlug]);
 
+  const { isAvailable: castAvailable, isCasting, startCast, stopCast, castMedia } = useCast();
+
   const photoUrl = getPhotoUrl(currentPhoto.r2Key);
   const initialVoteCount = votes[currentPhoto.id] ?? 0;
+
+  // Keep the Cast receiver in sync as the user browses photos
+  useEffect(() => {
+    if (isCasting) castMedia(photoUrl, currentPhoto.title);
+  }, [currentPhoto.id, isCasting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navBtn =
     "p-3 rounded-full bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all";
@@ -137,39 +150,83 @@ export function Lightbox({
       aria-label={`Photo: ${currentPhoto.title}`}
     >
       {/* ── Top bar ───────────────────────────────────────────────────────── */}
-      <div className="shrink-0 flex items-center justify-between px-4 pt-4 pb-2">
-        <span className="text-white/50 text-sm">
-          {currentIndex + 1} / {photos.length}
-        </span>
+      <div className="shrink-0 relative">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <span className="text-white/50 text-sm">
+            {currentIndex + 1} / {photos.length}
+          </span>
 
-        <div className="flex items-center gap-2">
-          {/* Info toggle — always shown so the user knows it exists */}
-          <button
-            onClick={() => setShowInfo((v) => !v)}
-            className={cn(
-              "p-2 rounded-full transition-all relative",
-              showInfo
-                ? "bg-white/20 text-white"
-                : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+          <div className="flex items-center gap-2">
+            {/* Cast button — only shown when a Cast device is reachable */}
+            {castAvailable && (
+              <button
+                onClick={isCasting ? stopCast : startCast}
+                className={cn(
+                  "p-2 rounded-full transition-all",
+                  isCasting
+                    ? "bg-blue-500/30 text-blue-300"
+                    : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+                )}
+                aria-label={isCasting ? t("stopCast") : t("cast")}
+                aria-pressed={isCasting}
+              >
+                <Cast className="w-5 h-5" />
+              </button>
             )}
-            aria-label={showInfo ? t("hideInfo") : t("showInfo")}
-            aria-expanded={showInfo}
-          >
-            <Info className="w-5 h-5" />
-            {/* Dot indicator when there is info but panel is closed */}
-            {!showInfo && hasInfo && (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent" />
-            )}
-          </button>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all"
-            aria-label={t("close")}
-          >
-            <X className="w-5 h-5" />
-          </button>
+            {/* Play / pause slideshow */}
+            <button
+              onClick={onTogglePlay}
+              className={cn(
+                "p-2 rounded-full transition-all",
+                isPlaying
+                  ? "bg-white/20 text-white"
+                  : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+              )}
+              aria-label={isPlaying ? t("pause") : t("play")}
+              aria-pressed={isPlaying}
+            >
+              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+            </button>
+
+            {/* Info toggle */}
+            <button
+              onClick={() => setShowInfo((v) => !v)}
+              className={cn(
+                "p-2 rounded-full transition-all relative",
+                showInfo
+                  ? "bg-white/20 text-white"
+                  : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+              )}
+              aria-label={showInfo ? t("hideInfo") : t("showInfo")}
+              aria-expanded={showInfo}
+            >
+              <Info className="w-5 h-5" />
+              {!showInfo && hasInfo && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent" />
+              )}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all"
+              aria-label={t("close")}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Slideshow progress bar — resets on each photo via key */}
+        {isPlaying && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10 overflow-hidden">
+            <div
+              key={currentPhoto.id}
+              className="h-full bg-white/50 origin-left w-full"
+              style={{ animation: `slideshow-progress ${SLIDESHOW_DELAY}ms linear forwards` }}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Image area ────────────────────────────────────────────────────── */}

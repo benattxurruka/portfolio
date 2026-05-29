@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function PhotoGallery({ photos, gallerySlug, votes }: Props) {
-  const { isOpen, currentIndex, currentPhoto, open, close, next, prev } =
+  const { isOpen, currentIndex, currentPhoto, open, close, next, prev, isPlaying, togglePlay } =
     useLightbox(photos);
 
   if (photos.length === 0) {
@@ -38,6 +38,8 @@ export function PhotoGallery({ photos, gallerySlug, votes }: Props) {
           onClose={close}
           onNext={next}
           onPrev={prev}
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
         />
       )}
     </>

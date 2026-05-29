@@ -50,6 +50,10 @@
     "voteAlready": "Ja has votat",
     "vote": "Votar aquesta foto",
     "showInfo": "Mostrar info de la foto",
-    "hideInfo": "Amagar info de la foto"
+    "hideInfo": "Amagar info de la foto",
+    "play": "Iniciar presentació",
+    "pause": "Pausar presentació",
+    "cast": "Reproduir a la TV",
+    "stopCast": "Aturar l'emissió"
   }
 }

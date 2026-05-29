@@ -50,6 +50,10 @@
     "voteAlready": "Already voted",
     "vote": "Vote for this photo",
     "showInfo": "Show photo info",
-    "hideInfo": "Hide photo info"
+    "hideInfo": "Hide photo info",
+    "play": "Start slideshow",
+    "pause": "Pause slideshow",
+    "cast": "Cast to TV",
+    "stopCast": "Stop casting"
   }
 }
