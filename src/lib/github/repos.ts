@@ -1,4 +1,5 @@
 import type { GitHubRepo } from "@/lib/r2/types";
+import { resolveGitHubAuthHeader } from "./auth";
 
 export async function fetchGitHubRepos(): Promise<GitHubRepo[]> {
   const username = process.env.GITHUB_USERNAME;
@@ -11,9 +12,9 @@ export async function fetchGitHubRepos(): Promise<GitHubRepo[]> {
     "X-GitHub-Api-Version": "2022-11-28",
   };
 
-  const token = process.env.GH_TOKEN?.trim();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  const auth = await resolveGitHubAuthHeader();
+  if (auth) {
+    headers["Authorization"] = auth;
   }
 
   const response = await fetch(

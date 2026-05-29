@@ -1,0 +1,264 @@
+name: Rotate GitHub App Private Key
+
+# Runs on 1 January at 08:00 UTC (annual rotation) and can be triggered manually.
+#
+# WHY THIS APPROACH
+# -----------------
+# GitHub provides no API to create Personal Access Tokens programmatically, so
+# the R2 rotation pattern (create new token → push to Vercel → redeploy) cannot
+# be applied directly.
+#
+# Instead, the app uses GitHub App authentication: at runtime it generates a
+# short-lived installation token (≤ 1 hour) by signing a JWT with the App's
+# private key. This means the access token is automatically rotated on every
+# cache miss — no cron job required for the token itself.
+#
+# What DOES need annual rotation is the App's RSA private key (the only
+# long-lived credential). That is what this workflow handles.
+#
+# TWO-PHASE ROTATION (zero downtime)
+# -----------------------------------
+# GitHub Apps support multiple active public keys simultaneously, so the old key
+# keeps working while the new one is being set up.
+#
+# Phase 1 — generate (runs on schedule or manual dispatch with phase=generate):
+#   • Generates a new RSA-4096 key pair.
+#   • Stages the new private key in Vercel as GH_APP_PRIVATE_KEY_NEXT.
+#   • Opens a GitHub issue with the new PUBLIC key and step-by-step instructions.
+#
+# Phase 2 — apply (manual dispatch with phase=apply, AFTER adding the new public
+#             key to the GitHub App settings):
+#   • Promotes GH_APP_PRIVATE_KEY_NEXT → GH_APP_PRIVATE_KEY in Vercel.
+#   • Removes the staging var.
+#   • Triggers a production redeploy.
+#
+# Required secrets (GitHub Actions environment: production):
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+#
+# Required Vercel env vars (set once; rotated by this workflow):
+#   GH_APP_ID, GH_APP_INSTALLATION_ID, GH_APP_PRIVATE_KEY
+
+on:
+  schedule:
+    - cron: '0 8 1 1 *'   # 1 January at 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: >
+          "generate" — create a new key pair and open a rotation issue (default).
+          "apply"    — promote the staged key to active; run this AFTER you have
+                       added the new public key to the GitHub App settings.
+        required: true
+        default: generate
+        type: choice
+        options: [generate, apply]
+
+jobs:
+  rotate:
+    name: Rotate GitHub App private key
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      issues:  write   # open the rotation issue
+      actions: write   # dispatch the deploy workflow (apply phase)
+
+    steps:
+      # ── Phase: generate ───────────────────────────────────────────────────────
+      - name: Generate new RSA-4096 key pair
+        if: github.event_name == 'schedule' || inputs.phase == 'generate'
+        id: gen
+        run: |
+          # openssl genrsa outputs PKCS#1 PEM — the format GitHub App expects.
+          NEW_PRIVATE_KEY=$(openssl genrsa 4096 2>/dev/null)
+          NEW_PUBLIC_KEY=$(echo "$NEW_PRIVATE_KEY" | openssl rsa -pubout 2>/dev/null)
+
+          echo "::add-mask::$NEW_PRIVATE_KEY"
+
+          # Write to GITHUB_OUTPUT using the heredoc form so newlines are preserved.
+          {
+            echo "PUBLIC_KEY<<__EOF__"
+            echo "$NEW_PUBLIC_KEY"
+            echo "__EOF__"
+
+            echo "PRIVATE_KEY<<__EOF__"
+            echo "$NEW_PRIVATE_KEY"
+            echo "__EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Key pair generated (4096-bit RSA)"
+
+      - name: Stage new private key in Vercel
+        if: github.event_name == 'schedule' || inputs.phase == 'generate'
+        env:
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NEW_PRIVATE_KEY:   ${{ steps.gen.outputs.PRIVATE_KEY }}
+        run: |
+          BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
+          AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
+
+          # Upsert GH_APP_PRIVATE_KEY_NEXT (staging slot — not yet active).
+          # jq -Rs converts the multiline PEM to a JSON string, escaping newlines.
+          ENCODED_KEY=$(echo "$NEW_PRIVATE_KEY" | jq -Rs .)
+
+          EXISTING_ID=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH" \
+            | jq -r '.envs[] | select(.key == "GH_APP_PRIVATE_KEY_NEXT" and (.target | contains(["production"]))) | .id // empty' \
+            | head -1)
+
+          if [ -n "$EXISTING_ID" ]; then
+            curl -sf -X PATCH "${BASE}/${EXISTING_ID}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"value\": ${ENCODED_KEY}}" > /dev/null
+            echo "Updated GH_APP_PRIVATE_KEY_NEXT in Vercel (staging)"
+          else
+            curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{
+                \"key\":    \"GH_APP_PRIVATE_KEY_NEXT\",
+                \"value\":  ${ENCODED_KEY},
+                \"type\":   \"sensitive\",
+                \"target\": [\"production\"]
+              }" > /dev/null
+            echo "Created GH_APP_PRIVATE_KEY_NEXT in Vercel (staging)"
+          fi
+
+      - name: Open rotation issue
+        if: github.event_name == 'schedule' || inputs.phase == 'generate'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const publicKey  = `${{ steps.gen.outputs.PUBLIC_KEY }}`;
+            const applyUrl   = `https://github.com/${{ github.repository }}/actions/workflows/rotate-github-token.yml`;
+            const appBaseUrl = 'https://github.com/settings/apps';
+
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: '🔑 GitHub App private key rotation — action required',
+              body: [
+                '## GitHub App private key rotation',
+                '',
+                'A new RSA-4096 key pair has been generated and the **private key** has been',
+                'staged in Vercel as `GH_APP_PRIVATE_KEY_NEXT` (not yet active).',
+                '',
+                'Follow the steps below to complete the rotation with **zero downtime**.',
+                'The old key stays active until you explicitly remove it, so there is no rush.',
+                '',
+                '---',
+                '',
+                '### Step 1 — Add the new public key to the GitHub App',
+                '',
+                `1. Open **[GitHub Developer Settings → GitHub Apps](${appBaseUrl})**.`,
+                '2. Click **Edit** on your portfolio App.',
+                '3. Scroll to **Private keys** → click **"Add a private key"**.',
+                '   *(Do **not** delete the old key yet — keep both active during the transition.)*',
+                '4. Paste the public key below into the input and save.',
+                '',
+                '```',
+                publicKey,
+                '```',
+                '',
+                '---',
+                '',
+                '### Step 2 — Apply the rotation',
+                '',
+                `Once the new public key is saved, [trigger the **apply** phase](${applyUrl})`,
+                'via **"Run workflow"** and choose **`apply`** from the phase dropdown.',
+                '',
+                'This will:',
+                '- Promote `GH_APP_PRIVATE_KEY_NEXT` → `GH_APP_PRIVATE_KEY` in Vercel',
+                '- Remove the staging variable',
+                '- Trigger a production redeploy',
+                '',
+                '---',
+                '',
+                '### Step 3 — Remove the old public key *(after confirming everything works)*',
+                '',
+                'Once the new deployment is healthy, delete the **old** public key from the',
+                'GitHub App settings. At that point rotation is complete.',
+                '',
+                '---',
+                '*Opened automatically by the [`rotate-github-token`](' +
+                  `https://github.com/${{ github.repository }}/actions/workflows/rotate-github-token.yml` +
+                  ') workflow.*',
+              ].join('\n'),
+              labels: ['maintenance'],
+            });
+
+            console.log(`Opened issue #${issue.number}: ${issue.html_url}`);
+
+      # ── Phase: apply ──────────────────────────────────────────────────────────
+      - name: Promote staged key to active
+        if: inputs.phase == 'apply'
+        id: apply
+        env:
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
+          AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
+
+          # ── Locate the staging var ──────────────────────────────────────────
+          ENVS=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH")
+
+          NEXT_ID=$(echo "$ENVS" \
+            | jq -r '.envs[] | select(.key == "GH_APP_PRIVATE_KEY_NEXT" and (.target | contains(["production"]))) | .id // empty' \
+            | head -1)
+
+          if [ -z "$NEXT_ID" ]; then
+            echo "ERROR: GH_APP_PRIVATE_KEY_NEXT not found in Vercel."
+            echo "Run the 'generate' phase first, then re-trigger 'apply'."
+            exit 1
+          fi
+
+          # ── Read its decrypted value ────────────────────────────────────────
+          NEW_KEY=$(curl -sf "${BASE}/${NEXT_ID}?teamId=${VERCEL_TEAM_ID}&decrypt=true" \
+            -H "$AUTH" | jq -r '.value')
+
+          if [ -z "$NEW_KEY" ] || [ "$NEW_KEY" = "null" ]; then
+            echo "ERROR: Could not decrypt GH_APP_PRIVATE_KEY_NEXT."
+            exit 1
+          fi
+
+          echo "::add-mask::$NEW_KEY"
+          ENCODED_KEY=$(echo "$NEW_KEY" | jq -Rs .)
+
+          # ── Upsert the active key ────────────────────────────────────────────
+          ACTIVE_ID=$(echo "$ENVS" \
+            | jq -r '.envs[] | select(.key == "GH_APP_PRIVATE_KEY" and (.target | contains(["production"]))) | .id // empty' \
+            | head -1)
+
+          if [ -n "$ACTIVE_ID" ]; then
+            curl -sf -X PATCH "${BASE}/${ACTIVE_ID}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"value\": ${ENCODED_KEY}}" > /dev/null
+            echo "Updated GH_APP_PRIVATE_KEY in Vercel (production)"
+          else
+            curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{
+                \"key\":    \"GH_APP_PRIVATE_KEY\",
+                \"value\":  ${ENCODED_KEY},
+                \"type\":   \"sensitive\",
+                \"target\": [\"production\"]
+              }" > /dev/null
+            echo "Created GH_APP_PRIVATE_KEY in Vercel (production)"
+          fi
+
+          # ── Delete the staging var ───────────────────────────────────────────
+          curl -sf -X DELETE "${BASE}/${NEXT_ID}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH" > /dev/null
+          echo "Deleted GH_APP_PRIVATE_KEY_NEXT staging var"
+
+      - name: Trigger production redeploy
+        if: inputs.phase == 'apply'
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/dispatches" \
+            -d '{"ref": "main"}'
+          echo "Deploy workflow dispatched on main"

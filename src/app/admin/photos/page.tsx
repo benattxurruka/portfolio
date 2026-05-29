@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { SyncButton } from "@/components/admin/SyncButton";
 
 export const metadata = { title: "Admin — Photos" };
 export const revalidate = 0;
@@ -17,11 +18,12 @@ export default async function AdminPhotosPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <AdminHeader activeTab="photos" />
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-xl font-semibold text-ink-primary">
-          Photo Metadata
-        </h1>
-        <span className="text-sm text-ink-muted">({photos.length})</span>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-semibold text-ink-primary">Photo Metadata</h1>
+          <span className="text-sm text-ink-muted">({photos.length})</span>
+        </div>
+        <SyncButton />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
