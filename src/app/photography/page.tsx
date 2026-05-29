@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Camera, Tag } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { getPhotos } from "@/lib/r2/photos";
+import { getTagConfig } from "@/lib/r2/tagConfig";
 import { deriveGalleries, deriveTags } from "@/lib/utils/galleries";
+import { mergeTagConfig, getTagLabel } from "@/lib/utils/tagNormalization";
 import { GalleryGrid } from "@/components/photography/GalleryGrid";
 import { recordPageView } from "@/lib/otel/metrics";
 
@@ -15,9 +17,15 @@ export const revalidate = 300;
 
 export default async function PhotographyPage() {
   try { recordPageView("photography"); } catch {}
-  const [photos, t] = await Promise.all([getPhotos(), getTranslations("Photography")]);
+  const [photos, t, locale, r2TagConfig] = await Promise.all([
+    getPhotos(),
+    getTranslations("Photography"),
+    getLocale(),
+    getTagConfig(),
+  ]);
 
-  const tags = deriveTags(photos);
+  const tagConfig = mergeTagConfig(r2TagConfig);
+  const tags = deriveTags(photos, tagConfig);
   const galleries = deriveGalleries(photos, {
     allPhotosName: t("allPhotosName"),
     allPhotosDescription: t("allPhotosDescription"),
@@ -83,7 +91,7 @@ export default async function PhotographyPage() {
                            hover:border-accent hover:text-accent transition-colors"
               >
                 <Tag className="w-3 h-3" />
-                {tag}
+                {getTagLabel(tag, locale, tagConfig)}
               </Link>
             ))}
           </div>

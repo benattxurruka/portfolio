@@ -1,8 +1,8 @@
-import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Pencil } from "lucide-react";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
-import { adminLogout } from "@/actions/adminAuth";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 
 export const metadata = { title: "Admin — Photos" };
 export const revalidate = 0;
@@ -16,26 +16,12 @@ export default async function AdminPhotosPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink-primary transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to site
-          </Link>
-          <h1 className="text-xl font-semibold text-ink-primary">
-            Photo Metadata ({photos.length})
-          </h1>
-        </div>
-        <form action={adminLogout}>
-          <button
-            type="submit"
-            className="text-sm text-ink-muted hover:text-ink-primary transition-colors"
-          >
-            Sign out
-          </button>
-        </form>
+      <AdminHeader activeTab="photos" />
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-xl font-semibold text-ink-primary">
+          Photo Metadata
+        </h1>
+        <span className="text-sm text-ink-muted">({photos.length})</span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">

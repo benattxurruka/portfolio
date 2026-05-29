@@ -1,4 +1,5 @@
 import type { Gallery, GalleryType, GalleryWithPhotos, Photo } from "../r2/types";
+import { normalizeTag, getTagVariants, type TagConfig } from "./tagNormalization";
 
 /**
  * Pretty-print a slug like "japan-2024" → "Japan 2024"
@@ -132,13 +133,17 @@ export function getGalleryPhotos(photos: Photo[], slug: string): Photo[] {
 }
 
 /**
- * Collect every unique tag across all photos, sorted alphabetically.
+ * Collect every unique canonical tag across all photos.
+ * Raw tags from R2 (any language) are normalised to their canonical slug so that
+ * multilingual variants of the same concept (e.g. "Catalunya", "Cataluña", "Catalonia")
+ * are merged into a single entry. Sorted by frequency desc, then alphabetically.
  */
-export function deriveTags(photos: Photo[]): string[] {
+export function deriveTags(photos: Photo[], tagConfig?: TagConfig): string[] {
   const counts = new Map<string, number>();
   for (const photo of photos) {
-    for (const tag of photo.tags ?? []) {
-      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    for (const rawTag of photo.tags ?? []) {
+      const canonical = normalizeTag(rawTag, tagConfig);
+      counts.set(canonical, (counts.get(canonical) ?? 0) + 1);
     }
   }
   return [...counts.keys()].sort(
@@ -147,10 +152,25 @@ export function deriveTags(photos: Photo[]): string[] {
 }
 
 /**
- * Return all photos that carry a specific tag.
+ * Return all photos that carry a specific canonical tag.
+ * Matches any registered variant (case-insensitive) or any raw tag that
+ * normalises to the same canonical slug.
  */
-export function getPhotosByTag(photos: Photo[], tag: string): Photo[] {
-  return photos.filter((p) => p.tags?.includes(tag));
+export function getPhotosByTag(
+  photos: Photo[],
+  canonicalTag: string,
+  tagConfig?: TagConfig
+): Photo[] {
+  const lowerVariants = new Set(
+    getTagVariants(canonicalTag, tagConfig).map((v) => v.toLowerCase())
+  );
+  return photos.filter((p) =>
+    p.tags?.some(
+      (t) =>
+        lowerVariants.has(t.toLowerCase()) ||
+        normalizeTag(t, tagConfig) === canonicalTag
+    )
+  );
 }
 
 /**
