@@ -57,6 +57,15 @@ function deriveFolderGalleryKey(r2Key: string): string | null {
  * The photo id is the object key with the "photos/" prefix stripped.
  * Example: "photos/japan-2024/shinjuku.jpg" → id "japan-2024/shinjuku.jpg"
  */
+/**
+ * Safely decode a percent-encoded metadata value.
+ * Returns the original string if it is not encoded or is malformed,
+ * so photos stored before encoding was introduced still display correctly.
+ */
+function dec(value: string): string {
+  try { return decodeURIComponent(value); } catch { return value; }
+}
+
 async function fetchPhotosFromR2(): Promise<Photo[]> {
   logger.info("[r2] fetchPhotosFromR2 start", { bucket: BUCKET, prefix: PHOTOS_PREFIX });
 
@@ -114,13 +123,13 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
       return {
         id,
         r2Key: key,
-        title:       m["title"]       ?? id,
-        description: m["description"] ?? undefined,
+        title:       m["title"]       ? dec(m["title"])       : id,
+        description: m["description"] ? dec(m["description"]) : undefined,
         takenAt:     m["taken-at"]    ?? undefined,
-        location:    m["location"]    ?? undefined,
+        location:    m["location"]    ? dec(m["location"])    : undefined,
         galleries: (() => {
           const meta: string[] = m["galleries"]
-            ? m["galleries"].split(",").map((g) => g.trim()).filter(Boolean)
+            ? m["galleries"].split(",").map((g) => dec(g.trim())).filter(Boolean)
             : [];
 
           // Auto-add a gallery derived from the folder path, unless the
@@ -137,10 +146,10 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
           return meta;
         })(),
         tags: m["tags"]
-          ? m["tags"].split(",").map((t) => t.trim()).filter(Boolean)
+          ? m["tags"].split(",").map((t) => dec(t.trim())).filter(Boolean)
           : undefined,
         coverFor: m["cover-for"]
-          ? m["cover-for"].split(",").map((c) => c.trim()).filter(Boolean)
+          ? m["cover-for"].split(",").map((c) => dec(c.trim())).filter(Boolean)
           : undefined,
         lat: m["lat"] ? parseFloat(m["lat"]) : undefined,
         lng: m["lng"] ? parseFloat(m["lng"]) : undefined,

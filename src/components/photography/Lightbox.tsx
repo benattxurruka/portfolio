@@ -99,6 +99,16 @@ export function Lightbox({
     setIsImageLoading(true);
   }, [currentPhoto.id]);
 
+  // ArrowUp → show info panel, ArrowDown → hide it
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "ArrowUp") { e.preventDefault(); setShowInfo(true); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); setShowInfo(false); }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   usePhotoTimer(currentPhoto.id);
 
   useEffect(() => {

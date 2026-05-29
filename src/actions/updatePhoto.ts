@@ -15,28 +15,28 @@ export async function updatePhoto(
   const r2Key = formData.get("r2Key") as string;
   if (!r2Key) return { error: "Missing r2Key" };
 
-  const tags = (formData.get("tags") as string)
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .join(",");
+  // S3/R2 metadata headers are ASCII-only. Encode non-ASCII characters so that
+  // accents, ñ, etc. survive the round-trip. Decoded back in lib/r2/photos.ts.
+  const enc = encodeURIComponent;
+
+  // List fields: encode each item individually so the comma separator is preserved.
+  const encList = (raw: string) =>
+    raw.split(",").map((v) => enc(v.trim())).filter(Boolean).join(",");
+
+  const tags    = encList(formData.get("tags")    as string);
+  const coverFor = encList(formData.get("coverFor") as string);
+  const galleries = encList((formData.get("galleries") as string).trim());
 
   const lat = (formData.get("lat") as string).trim();
   const lng = (formData.get("lng") as string).trim();
 
   try {
-    const coverFor = (formData.get("coverFor") as string)
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean)
-      .join(",");
-
     await updatePhotoMetadata(r2Key, {
-      title:       (formData.get("title") as string).trim() || undefined,
-      description: (formData.get("description") as string).trim() || undefined,
-      tags:        tags || undefined,
-      location:    (formData.get("location") as string).trim() || undefined,
-      galleries:   (formData.get("galleries") as string).trim() || undefined,
+      title:       enc((formData.get("title")       as string).trim()) || undefined,
+      description: enc((formData.get("description") as string).trim()) || undefined,
+      location:    enc((formData.get("location")    as string).trim()) || undefined,
+      tags:        tags     || undefined,
+      galleries:   galleries || undefined,
       "cover-for": coverFor || undefined,
       lat:         lat || undefined,
       lng:         lng || undefined,
