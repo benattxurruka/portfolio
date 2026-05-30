@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
 import { updatePhoto } from "@/actions/updatePhoto";
+import { deriveGalleries } from "@/lib/utils/galleries";
 import { PhotoEditForm } from "./PhotoEditForm";
 
 export const revalidate = 0;
@@ -25,6 +26,8 @@ export default async function AdminPhotoEditPage({ params }: Props) {
   const photos = await getPhotos();
   const photo = photos.find((p) => p.id === id);
   if (!photo) notFound();
+
+  const allGalleries = deriveGalleries(photos);
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
@@ -54,7 +57,7 @@ export default async function AdminPhotoEditPage({ params }: Props) {
         </div>
       </div>
 
-      <PhotoEditForm photo={photo} action={updatePhoto} />
+      <PhotoEditForm photo={photo} allGalleries={allGalleries} action={updatePhoto} />
     </div>
   );
 }

@@ -12,7 +12,7 @@
     "githubTitle": "GitHub Proiektuak",
     "githubDescription": "Nire kode irekiko lana, alboko proiektuak eta esperimentuak GitHub-etik zuzenean.",
     "photographyTitle": "Argazkigintza",
-    "photographyDescription": "Bidaietako, gaietako eta gogoko argazkien galeria bat, Cloudflare R2-n gordetuta.",
+    "photographyDescription": "Lekuetako, gaietako eta gogoko argazkien galeria bat, Cloudflare R2-n gordetuta.",
     "cvTitle": "CV",
     "cvDescription": "Nire ibilbide profesionala, esperientzia eta gaitasunak LinkedIn-en."
   },
@@ -25,7 +25,7 @@
   "Photography": {
     "title": "Argazkigintza",
     "summary": "{photoCount} argazki {galleryCount} galeriatan",
-    "byTrip": "Bidaiaren arabera",
+    "byPlace": "Lekuaren arabera",
     "byTheme": "Gaiaren arabera",
     "byTag": "Etiketaren arabera",
     "allPhotosName": "Argazki guztiak",
@@ -40,7 +40,7 @@
   },
   "GalleryCard": {
     "favourites": "Hautatuak",
-    "trips": "Bidaiak",
+    "places": "Lekua",
     "themes": "Gaia"
   },
   "Lightbox": {

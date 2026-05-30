@@ -12,7 +12,7 @@
     "githubTitle": "Proyectos de GitHub",
     "githubDescription": "Explora mi trabajo de código abierto, proyectos personales y experimentos, sincronizados en directo desde GitHub.",
     "photographyTitle": "Fotografía",
-    "photographyDescription": "Una galería de viajes, temáticas y mis fotos favoritas, almacenadas en Cloudflare R2.",
+    "photographyDescription": "Una galería de lugares, temáticas y mis fotos favoritas, almacenadas en Cloudflare R2.",
     "cvTitle": "CV",
     "cvDescription": "Mi trayectoria profesional, experiencia y habilidades en LinkedIn."
   },
@@ -25,7 +25,7 @@
   "Photography": {
     "title": "Fotografía",
     "summary": "{photoCount, plural, one {# foto} other {# fotos}} en {galleryCount, plural, one {# galería} other {# galerías}}",
-    "byTrip": "Por viaje",
+    "byPlace": "Por lugar",
     "byTheme": "Por temática",
     "byTag": "Por etiqueta",
     "allPhotosName": "Todas las fotos",
@@ -40,7 +40,7 @@
   },
   "GalleryCard": {
     "favourites": "Selección",
-    "trips": "Viajes",
+    "places": "Lugar",
     "themes": "Temática"
   },
   "Lightbox": {

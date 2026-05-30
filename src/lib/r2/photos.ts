@@ -16,10 +16,10 @@ const IMAGE_RE = /\.(jpe?g|png|webp|avif|gif)$/i;
  *
  * Rules:
  *   "japan-2024/sunset.jpg"          → "japan-2024"        (plain folder key)
- *   "trips/japan-2024/sunset.jpg"    → "trips/japan-2024"  (typed two-level)
+ *   "places/japan-2024/sunset.jpg"   → "places/japan-2024" (typed two-level)
  *   "themes/nature/sunset.jpg"       → "themes/nature"     (typed two-level)
  *   "favourites/portrait.jpg"        → "favourites"
- *   "trips/sunset.jpg"               → null  (type prefix with no gallery name)
+ *   "places/sunset.jpg"              → null  (type prefix with no gallery name)
  *   "themes/sunset.jpg"              → null
  *   "sunset.jpg"                     → null  (root level)
  */
@@ -30,7 +30,7 @@ function deriveFolderGalleryKey(r2Key: string): string | null {
   const first = parts[0];
 
   // Recognised type prefixes — only valid when there is a gallery name below them
-  if (first === "trips" || first === "themes") {
+  if (first === "places" || first === "themes") {
     return parts.length >= 3 ? `${first}/${parts[1]}` : null;
   }
 
@@ -50,7 +50,7 @@ function deriveFolderGalleryKey(r2Key: string): string | null {
  *   x-amz-meta-taken-at     ISO date, e.g. "2024-03-15"
  *   x-amz-meta-location     e.g. "Tokyo, Japan"
  *   x-amz-meta-galleries    Comma-separated keys:
- *                              "favourites,trips/japan-2024,themes/cityscape"
+ *                              "favourites,places/japan-2024,themes/cityscape"
  *   x-amz-meta-width        Pixel width  (optional, for aspect-ratio hints)
  *   x-amz-meta-height       Pixel height (optional)
  *

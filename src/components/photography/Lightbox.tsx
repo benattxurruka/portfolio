@@ -232,7 +232,18 @@ export function Lightbox({
       {/* ── Image area ────────────────────────────────────────────────────── */}
       <div
         className="flex-1 min-h-0 relative flex items-center justify-center landscape:px-16"
-        onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchStart={(e) => {
+          if (e.touches.length > 1) {
+            // Multi-touch (pinch/zoom) — disable swipe detection
+            touchStartX.current = null;
+            return;
+          }
+          touchStartX.current = e.touches[0].clientX;
+        }}
+        onTouchMove={(e) => {
+          // If a second finger is added mid-gesture, cancel the pending swipe
+          if (e.touches.length > 1) touchStartX.current = null;
+        }}
         onTouchEnd={(e) => {
           if (touchStartX.current === null) return;
           const delta = e.changedTouches[0].clientX - touchStartX.current;

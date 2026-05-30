@@ -31,7 +31,7 @@ export default async function PhotographyPage() {
     allPhotosDescription: t("allPhotosDescription"),
   });
   const favourites = galleries.filter((g) => g.type === "favourites");
-  const trips = galleries.filter((g) => g.type === "trips");
+  const places = galleries.filter((g) => g.type === "places");
   const themes = galleries.filter((g) => g.type === "themes");
 
   return (
@@ -57,12 +57,12 @@ export default async function PhotographyPage() {
         </section>
       )}
 
-      {trips.length > 0 && (
+      {places.length > 0 && (
         <section className="mb-12">
           <h2 className="text-sm font-medium text-ink-muted uppercase tracking-widest mb-5">
-            {t("byTrip")}
+            {t("byPlace")}
           </h2>
-          <GalleryGrid galleries={trips} />
+          <GalleryGrid galleries={places} />
         </section>
       )}
 

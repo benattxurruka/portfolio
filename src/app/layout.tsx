@@ -41,7 +41,7 @@ export default async function RootLayout({
   const initialClass = themeCookie === "dark" ? "dark" : themeCookie === "light" ? "" : "";
 
   return (
-    <html lang={locale} className={initialClass}>
+    <html lang={locale} className={initialClass} suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>

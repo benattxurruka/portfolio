@@ -16,7 +16,7 @@ function prettifySlug(slug: string): string {
  *
  * Gallery key format in photo.galleries:
  *   "favourites"
- *   "trips/{slug}"    e.g. "trips/japan-2024"
+ *   "places/{slug}"   e.g. "places/japan-2024"
  *   "themes/{slug}"   e.g. "themes/cityscape"
  */
 interface DeriveGalleriesOptions {
@@ -30,13 +30,13 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
   for (const photo of photos) {
     for (const key of photo.galleries) {
       if (!map.has(key)) {
-        const type: GalleryType = key.startsWith("trips/")
-          ? "trips"
+        const type: GalleryType = key.startsWith("places/")
+          ? "places"
           : key.startsWith("themes/")
           ? "themes"
           : key === "favourites"
           ? "favourites"
-          : "trips"; // plain folder key (e.g. "japan-2024") → trips by default
+          : "places"; // plain folder key (e.g. "japan-2024") → places by default
         map.set(key, { type, photos: [] });
       }
       map.get(key)!.photos.push(photo);
@@ -68,7 +68,7 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
     map.delete("favourites");
   }
 
-  // Then trips, then themes — sorted alphabetically within each group
+  // Then places, then themes — sorted alphabetically within each group
   const sorted = [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
 
   for (const [key, entry] of sorted) {
@@ -81,7 +81,7 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
       slug,
       name,
       description:
-        entry.type === "trips"
+        entry.type === "places"
           ? `Photos from ${name}`
           : `${name} photography`,
       type: entry.type,
@@ -120,8 +120,8 @@ export function getGalleryPhotos(photos: Photo[], slug: string): Photo[] {
     return photos.filter((p) => p.galleries.includes("favourites"));
   }
 
-  // Match typed keys (trips/slug, themes/slug) and plain folder keys (slug)
-  const tripsKey = `trips/${slug}`;
+  // Match typed keys (places/slug, themes/slug) and plain folder keys (slug)
+  const tripsKey = `places/${slug}`;
   const themesKey = `themes/${slug}`;
 
   return photos.filter(

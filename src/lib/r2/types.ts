@@ -16,7 +16,7 @@ export interface Photo {
    * A photo can belong to multiple galleries; the actual gallery definitions
    * are derived at runtime from these keys. Format:
    *   - "favourites"
-   *   - "trips/{slug}"  e.g. "trips/japan-2024"
+   *   - "places/{slug}"  e.g. "places/japan-2024"
    *   - "themes/{slug}" e.g. "themes/cityscape"
    */
   galleries: string[];
@@ -44,7 +44,7 @@ export interface VoteMap {
 // Derived gallery types (computed from photos at runtime)
 // ---------------------------------------------------------------------------
 
-export type GalleryType = "favourites" | "trips" | "themes";
+export type GalleryType = "favourites" | "places" | "themes";
 
 export interface Gallery {
   id: string;
