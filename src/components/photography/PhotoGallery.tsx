@@ -31,7 +31,7 @@ export function PhotoGallery({ photos, gallerySlug, votes }: Props) {
       <div className="flex justify-end mb-4">
         <button
           onClick={() => openAndPlay(0)}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-all text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-2 text-ink-secondary border border-border hover:bg-surface-3 hover:text-ink-primary transition-all text-sm font-medium"
         >
           <Play className="w-4 h-4" />
           {t("play")}
