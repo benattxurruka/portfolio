@@ -34,6 +34,11 @@ export function useLightbox(photos: Photo[]) {
 
   const togglePlay = useCallback(() => setIsPlaying((v) => !v), []);
 
+  const openAndPlay = useCallback((index = 0) => {
+    setCurrentIndex(index);
+    setIsPlaying(true);
+  }, []);
+
   // Auto-advance while playing
   useEffect(() => {
     if (!isPlaying || !isOpen) return;
@@ -65,6 +70,6 @@ export function useLightbox(photos: Photo[]) {
   return {
     isOpen, currentIndex, currentPhoto,
     open, close, next, prev,
-    isPlaying, togglePlay,
+    isPlaying, togglePlay, openAndPlay,
   };
 }

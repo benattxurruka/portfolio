@@ -159,7 +159,14 @@ export function useCast(): CastControls {
     const { cc } = getCastGlobals();
     if (!cc) return;
 
-    const info = new cc.media.MediaInfo(url, "image/jpeg");
+    const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
+    const contentType =
+      ext === "png"  ? "image/png"  :
+      ext === "webp" ? "image/webp" :
+      ext === "gif"  ? "image/gif"  :
+      "image/jpeg";
+
+    const info = new cc.media.MediaInfo(url, contentType);
     info.metadata = new cc.media.PhotoMediaMetadata();
     info.metadata.metadataType = cc.media.MetadataType.PHOTO;
     info.metadata.title = title;

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
 import type { Photo, VoteMap } from "@/lib/r2/types";
 import { PhotoGrid } from "./PhotoGrid";
 import { Lightbox } from "./Lightbox";
 import { useLightbox } from "@/hooks/useLightbox";
+import { useTranslations } from "next-intl";
+import { Play } from "lucide-react";
 
 interface Props {
   photos: Photo[];
@@ -13,8 +14,9 @@ interface Props {
 }
 
 export function PhotoGallery({ photos, gallerySlug, votes }: Props) {
-  const { isOpen, currentIndex, currentPhoto, open, close, next, prev, isPlaying, togglePlay } =
+  const { isOpen, currentIndex, currentPhoto, open, close, next, prev, isPlaying, togglePlay, openAndPlay } =
     useLightbox(photos);
+  const t = useTranslations("Lightbox");
 
   if (photos.length === 0) {
     return (
@@ -26,6 +28,15 @@ export function PhotoGallery({ photos, gallerySlug, votes }: Props) {
 
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => openAndPlay(0)}
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-all text-sm font-medium"
+        >
+          <Play className="w-4 h-4" />
+          {t("play")}
+        </button>
+      </div>
       <PhotoGrid photos={photos} onPhotoClick={open} />
 
       {isOpen && currentPhoto && currentIndex !== null && (
