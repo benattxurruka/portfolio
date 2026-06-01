@@ -33,24 +33,28 @@ export function ScreenshotBlocker() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "PrintScreen" || e.key === "Print") {
+      // Windows / Linux: PrintScreen key
+      if (e.key === "PrintScreen" || e.key === "Print" || e.code === "PrintScreen") {
         e.preventDefault();
         trigger();
         return;
       }
-      // macOS screenshot shortcuts
+      // macOS screenshot shortcuts — use e.code (physical key) instead of e.key
+      // because Shift changes e.key ("3" → "#" on US layout, "·" on ES, etc.)
+      //   Cmd+Shift+3/4/5  full screen / selection / toolbar
+      //   Cmd+Shift+6      Touch Bar
       if (
-        e.metaKey && e.shiftKey &&
-        ["3", "4", "5", "6"].includes(e.key)
+        e.metaKey && e.shiftKey && !e.ctrlKey &&
+        ["Digit3", "Digit4", "Digit5", "Digit6"].includes(e.code)
       ) {
         e.preventDefault();
         trigger();
         return;
       }
-      // macOS "copy to clipboard" variants
+      // macOS "copy to clipboard" variants: Cmd+Ctrl+Shift+3/4
       if (
         e.metaKey && e.ctrlKey && e.shiftKey &&
-        ["3", "4"].includes(e.key)
+        ["Digit3", "Digit4"].includes(e.code)
       ) {
         e.preventDefault();
         trigger();
