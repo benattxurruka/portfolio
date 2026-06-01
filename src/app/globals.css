@@ -111,3 +111,8 @@
            bg-surface-3 text-ink-secondary border border-border;
   }
 }
+
+/* ─── Print / PDF protection ────────────────────────────────── */
+@media print {
+  body { display: none !important; }
+}

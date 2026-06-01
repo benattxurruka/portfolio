@@ -13,6 +13,7 @@ import { useVote } from "@/hooks/useVote";
 import { usePhotoTimer } from "@/hooks/usePhotoTimer";
 import { useCast } from "@/hooks/useCast";
 import { SLIDESHOW_DELAY } from "@/hooks/useLightbox";
+import { ScreenshotBlocker } from "./ScreenshotBlocker";
 import { recordView } from "@/actions/view";
 import { cn } from "@/lib/utils/cn";
 
@@ -154,6 +155,7 @@ export function Lightbox({
       aria-modal="true"
       aria-label={`Photo: ${currentPhoto.title}`}
     >
+      <ScreenshotBlocker />
       {/* ── Top bar ───────────────────────────────────────────────────────── */}
       <div className="shrink-0 relative">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
