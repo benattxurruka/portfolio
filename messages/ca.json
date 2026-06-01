@@ -31,7 +31,9 @@
     "allPhotosName": "Totes les fotos",
     "allPhotosDescription": "Totes les fotos de la col·lecció",
     "emptyHeading": "Encara no hi ha galeries",
-    "emptyHint": "Puja fotos al teu bucket de R2 — es descobriran automàticament."
+    "emptyHint": "Puja fotos al teu bucket de R2 — es descobriran automàticament.",
+    "buyPrintsHint": "T'interessa comprar una còpia?",
+    "buyPrintsLink": "Contacta'm"
   },
   "Gallery": {
     "backLink": "Totes les galeries",

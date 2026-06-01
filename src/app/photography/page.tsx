@@ -49,6 +49,12 @@ export default async function PhotographyPage() {
         <p className="text-ink-secondary ml-14">
           {t("summary", { photoCount: photos.length, galleryCount: galleries.length })}
         </p>
+        <p className="text-ink-muted text-sm ml-14 mt-1">
+          {t("buyPrintsHint")}{" "}
+          <Link href="/contact" className="underline hover:text-ink-secondary transition-colors">
+            {t("buyPrintsLink")}
+          </Link>
+        </p>
       </div>
 
       {favourites.length > 0 && (

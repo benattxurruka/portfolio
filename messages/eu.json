@@ -31,7 +31,9 @@
     "allPhotosName": "Argazki guztiak",
     "allPhotosDescription": "Bildumako argazki guztiak",
     "emptyHeading": "Oraindik ez dago galeriarik",
-    "emptyHint": "Igo argazkiak R2 bucketera — automatikoki aurkituko dira."
+    "emptyHint": "Igo argazkiak R2 bucketera — automatikoki aurkituko dira.",
+    "buyPrintsHint": "Argazki inprimaki bat erosi nahi duzu?",
+    "buyPrintsLink": "Jarri nirekin harremanetan"
   },
   "Gallery": {
     "backLink": "Galeria guztiak",

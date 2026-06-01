@@ -54,10 +54,12 @@ function VoteButton({
   photoId,
   gallerySlug,
   initialCount,
+  compact = false,
 }: {
   photoId: string;
   gallerySlug: string;
   initialCount: number;
+  compact?: boolean;
 }) {
   const t = useTranslations("Lightbox");
   const { hasVoted, count, vote, isPending } = useVote(photoId, gallerySlug, initialCount);
@@ -67,7 +69,10 @@ function VoteButton({
       onClick={vote}
       disabled={isPending}
       className={cn(
-        "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 shrink-0",
+        "flex items-center transition-all duration-200 shrink-0",
+        compact
+          ? "gap-1 px-2.5 py-1.5 rounded-full text-sm"
+          : "gap-2 px-4 py-2 rounded-full text-sm font-medium",
         hasVoted
           ? "bg-red-500/20 text-red-400 border border-red-500/30 cursor-default"
           : "bg-white/10 text-white/70 border border-white/20 hover:bg-white/20 hover:text-white"
@@ -188,6 +193,14 @@ export function Lightbox({
             >
               {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
+
+            {/* Vote button */}
+            <VoteButton
+              photoId={currentPhoto.id}
+              gallerySlug={gallerySlug}
+              initialCount={initialVoteCount}
+              compact
+            />
 
             {/* Info toggle */}
             <button
@@ -314,21 +327,14 @@ export function Lightbox({
       {/* ── Collapsible info panel ────────────────────────────────────────── */}
       {showInfo && (
         <div className="shrink-0 border-t border-white/10 px-4 pt-4 pb-5 space-y-4 overflow-y-auto max-h-[50vh] animate-fade-in">
-          {/* Title + vote row */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="text-white font-semibold text-base leading-snug">
-                {currentPhoto.title}
-              </h2>
-              {currentPhoto.description && (
-                <p className="text-white/60 text-sm mt-1">{currentPhoto.description}</p>
-              )}
-            </div>
-            <VoteButton
-              photoId={currentPhoto.id}
-              gallerySlug={gallerySlug}
-              initialCount={initialVoteCount}
-            />
+          {/* Title + description */}
+          <div className="min-w-0">
+            <h2 className="text-white font-semibold text-base leading-snug">
+              {currentPhoto.title}
+            </h2>
+            {currentPhoto.description && (
+              <p className="text-white/60 text-sm mt-1">{currentPhoto.description}</p>
+            )}
           </div>
 
           {/* Tags */}

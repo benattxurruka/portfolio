@@ -31,7 +31,9 @@
     "allPhotosName": "All Photos",
     "allPhotosDescription": "All photos in the collection",
     "emptyHeading": "No galleries yet",
-    "emptyHint": "Upload photos to your R2 bucket — they will be discovered automatically."
+    "emptyHint": "Upload photos to your R2 bucket — they will be discovered automatically.",
+    "buyPrintsHint": "Interested in buying a print?",
+    "buyPrintsLink": "Contact me"
   },
   "Gallery": {
     "backLink": "All galleries",

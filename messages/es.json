@@ -31,7 +31,9 @@
     "allPhotosName": "Todas las fotos",
     "allPhotosDescription": "Todas las fotos de la colección",
     "emptyHeading": "Aún no hay galerías",
-    "emptyHint": "Sube fotos a tu bucket de R2 — se descubrirán automáticamente."
+    "emptyHint": "Sube fotos a tu bucket de R2 — se descubrirán automáticamente.",
+    "buyPrintsHint": "¿Interesado en comprar una impresión?",
+    "buyPrintsLink": "Contáctame"
   },
   "Gallery": {
     "backLink": "Todas las galerías",
