@@ -38,7 +38,8 @@
   "Gallery": {
     "backLink": "All galleries",
     "photoCount": "{count, plural, one {# photo} other {# photos}}",
-    "empty": "No photos in this gallery yet."
+    "empty": "No photos in this gallery yet.",
+    "clearFilters": "Clear filters"
   },
   "GalleryCard": {
     "favourites": "Curated",

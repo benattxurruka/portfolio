@@ -8,7 +8,7 @@ import { getVotes } from "@/lib/r2/votes";
 import { getTagConfig } from "@/lib/r2/tagConfig";
 import { deriveTags, getPhotosByTag } from "@/lib/utils/galleries";
 import { normalizeTag, mergeTagConfig, getTagLabel } from "@/lib/utils/tagNormalization";
-import { PhotoGallery } from "@/components/photography/PhotoGallery";
+import { TagFilteredGallery } from "@/components/photography/TagFilteredGallery";
 import { recordPageView } from "@/lib/otel/metrics";
 
 export const revalidate = 300;
@@ -75,7 +75,14 @@ export default async function TagGalleryPage({ params }: Props) {
         </p>
       </div>
 
-      <PhotoGallery photos={taggedPhotos} gallerySlug={`tag/${canonical}`} votes={votes} />
+      <TagFilteredGallery
+        photos={taggedPhotos}
+        gallerySlug={`tag/${canonical}`}
+        votes={votes}
+        lockedTag={canonical}
+        tagConfig={tagConfig}
+        locale={locale}
+      />
     </div>
   );
 }

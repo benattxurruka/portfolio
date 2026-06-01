@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Images } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { getPhotos } from "@/lib/r2/photos";
 import { getVotes } from "@/lib/r2/votes";
+import { getTagConfig } from "@/lib/r2/tagConfig";
 import { resolveGallery } from "@/lib/utils/galleries";
-import { PhotoGallery } from "@/components/photography/PhotoGallery";
+import { mergeTagConfig } from "@/lib/utils/tagNormalization";
+import { TagFilteredGallery } from "@/components/photography/TagFilteredGallery";
 import { recordPageView } from "@/lib/otel/metrics";
 
 export const revalidate = 300;
@@ -29,14 +31,18 @@ export default async function GalleryPage({ params }: Props) {
   const { gallery: slug } = await params;
   try { recordPageView(`gallery/${slug}`); } catch {}
 
-  const [photos, votes, t] = await Promise.all([
+  const [photos, votes, t, locale, r2TagConfig] = await Promise.all([
     getPhotos(),
     getVotes(),
     getTranslations("Gallery"),
+    getLocale(),
+    getTagConfig(),
   ]);
 
   const gallery = resolveGallery(photos, slug);
   if (!gallery) notFound();
+
+  const tagConfig = mergeTagConfig(r2TagConfig);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -62,7 +68,13 @@ export default async function GalleryPage({ params }: Props) {
         </p>
       </div>
 
-      <PhotoGallery photos={gallery.photos} gallerySlug={slug} votes={votes} />
+      <TagFilteredGallery
+        photos={gallery.photos}
+        gallerySlug={slug}
+        votes={votes}
+        tagConfig={tagConfig}
+        locale={locale}
+      />
     </div>
   );
 }

@@ -38,7 +38,8 @@
   "Gallery": {
     "backLink": "Galeria guztiak",
     "photoCount": "{count} argazki",
-    "empty": "Oraindik ez dago argazkirik galeria honetan."
+    "empty": "Oraindik ez dago argazkirik galeria honetan.",
+    "clearFilters": "Iragazkiak ezabatu"
   },
   "GalleryCard": {
     "favourites": "Hautatuak",
