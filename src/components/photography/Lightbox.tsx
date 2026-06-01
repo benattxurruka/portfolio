@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   X, ChevronLeft, ChevronRight, Info,
-  MapPin, Calendar, Heart, Tag, Play, Pause, Cast,
+  MapPin, Calendar, Heart, Tag, Play, Pause, Cast, Share2,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import type { Photo, VoteMap } from "@/lib/r2/types";
@@ -104,12 +104,26 @@ export function Lightbox({
   const locale = useLocale();
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
+  const [canShare, setCanShare] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   // Reset loading state whenever the photo changes
   useEffect(() => {
     setIsImageLoading(true);
   }, [currentPhoto.id]);
+
+  // Detect Web Share API support after mount (not available in all browsers/SSR)
+  useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && !!navigator.share);
+  }, []);
+
+  async function handleShare() {
+    try {
+      await navigator.share({ title: currentPhoto.title, url: photoUrl });
+    } catch {
+      // User cancelled or share not supported — nothing to do
+    }
+  }
 
   // ArrowUp → show info panel, ArrowDown → hide it
   useEffect(() => {
@@ -221,6 +235,17 @@ export function Lightbox({
                 <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent" />
               )}
             </button>
+
+            {/* Share — only shown when Web Share API is available (mobile / modern desktop) */}
+            {canShare && (
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-full bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all"
+                aria-label={t("share")}
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
+            )}
 
             <button
               onClick={onClose}

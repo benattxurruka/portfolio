@@ -45,8 +45,20 @@ export async function getInstallationToken(
   privateKey: string,
   installationId: string,
 ): Promise<string> {
-  // Vercel stores multiline env vars with literal \n — restore actual newlines.
-  const pem = privateKey.replace(/\\n/g, "\n");
+  // Normalise the PEM: Vercel can deliver it with literal \n sequences,
+  // Windows-style CRLF, or (after a botched rotation) JSON-quoted with leading ".
+  let pem = privateKey
+    .replace(/\\r\\n/g, "\n") // literal \r\n → newline
+    .replace(/\\n/g, "\n")    // literal \n  → newline
+    .replace(/\r\n/g, "\n")   // actual CRLF → newline
+    .replace(/\r/g, "\n")     // stray CR    → newline
+    .trim();
+
+  // If the rotation stored the value as a JSON string (starts/ends with "),
+  // unwrap it so OpenSSL receives bare PEM content.
+  if (pem.startsWith('"') && pem.endsWith('"')) {
+    try { pem = JSON.parse(pem); } catch { /* leave as-is */ }
+  }
   const jwt = makeAppJWT(appId, pem);
 
   const res = await fetch(

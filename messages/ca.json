@@ -56,6 +56,7 @@
     "play": "Iniciar presentació",
     "pause": "Pausar presentació",
     "cast": "Reproduir a la TV",
-    "stopCast": "Aturar l'emissió"
+    "stopCast": "Aturar l'emissió",
+    "share": "Compartir foto"
   }
 }
