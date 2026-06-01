@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { adminLogout } from "@/actions/adminAuth";
 
 interface Props {
-  activeTab: "photos" | "tags";
+  activeTab: "photos" | "tags" | "upload";
 }
 
 export function AdminHeader({ activeTab }: Props) {
@@ -37,6 +37,16 @@ export function AdminHeader({ activeTab }: Props) {
             }`}
           >
             Tags
+          </Link>
+          <Link
+            href="/admin/photos/upload"
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              activeTab === "upload"
+                ? "bg-surface-2 text-ink-primary font-medium"
+                : "text-ink-muted hover:text-ink-primary"
+            }`}
+          >
+            Upload
           </Link>
         </nav>
       </div>

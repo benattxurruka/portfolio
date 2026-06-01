@@ -6,6 +6,8 @@ import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
 import { updatePhoto } from "@/actions/updatePhoto";
 import { deriveGalleries } from "@/lib/utils/galleries";
 import { PhotoEditForm } from "./PhotoEditForm";
+import { ReplacePhotoSection } from "@/components/admin/ReplacePhotoSection";
+import { DeletePhotoButton } from "@/components/admin/DeletePhotoButton";
 
 export const revalidate = 0;
 
@@ -58,6 +60,15 @@ export default async function AdminPhotoEditPage({ params }: Props) {
       </div>
 
       <PhotoEditForm photo={photo} allGalleries={allGalleries} action={updatePhoto} />
+
+      <hr className="border-border my-8" />
+
+      <div className="space-y-6">
+        <ReplacePhotoSection r2Key={photo.r2Key} />
+        <div className="border-t border-border pt-6">
+          <DeletePhotoButton r2Key={photo.r2Key} />
+        </div>
+      </div>
     </div>
   );
 }
