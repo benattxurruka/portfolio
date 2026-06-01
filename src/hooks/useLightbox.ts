@@ -32,6 +32,32 @@ export function useLightbox(photos: Photo[]) {
     );
   }, [photos.length]);
 
+  // Keep ?photo=<id> in the URL in sync with the open photo.
+  // replaceState avoids polluting browser history on every next/prev.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (currentIndex === null) {
+      if (url.searchParams.has("photo")) {
+        url.searchParams.delete("photo");
+        history.replaceState(null, "", url.toString());
+      }
+      return;
+    }
+    const id = photos[currentIndex]?.id;
+    if (id && url.searchParams.get("photo") !== id) {
+      url.searchParams.set("photo", id);
+      history.replaceState(null, "", url.toString());
+    }
+  }, [currentIndex, photos]);
+
+  // On mount: if the URL contains ?photo=<id>, open that photo directly.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("photo");
+    if (!id) return;
+    const index = photos.findIndex((p) => p.id === id);
+    if (index !== -1) setCurrentIndex(index);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const togglePlay = useCallback(() => setIsPlaying((v) => !v), []);
 
   const openAndPlay = useCallback((index = 0) => {

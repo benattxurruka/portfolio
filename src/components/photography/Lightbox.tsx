@@ -119,7 +119,7 @@ export function Lightbox({
 
   async function handleShare() {
     try {
-      await navigator.share({ title: currentPhoto.title, url: photoUrl });
+      await navigator.share({ title: currentPhoto.title, url: window.location.href });
     } catch {
       // User cancelled or share not supported — nothing to do
     }

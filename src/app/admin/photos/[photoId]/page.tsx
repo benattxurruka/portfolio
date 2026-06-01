@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
 import { updatePhoto } from "@/actions/updatePhoto";
 import { deriveGalleries } from "@/lib/utils/galleries";
@@ -31,14 +31,51 @@ export default async function AdminPhotoEditPage({ params }: Props) {
 
   const allGalleries = deriveGalleries(photos);
 
+  const photoIndex = photos.findIndex((p) => p.id === id);
+  const encode = (pid: string) => Buffer.from(pid).toString("base64url");
+  const prevPhoto = photoIndex > 0 ? photos[photoIndex - 1] : null;
+  const nextPhoto = photoIndex < photos.length - 1 ? photos[photoIndex + 1] : null;
+
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      <Link
-        href="/admin/photos"
-        className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink-primary transition-colors mb-8"
-      >
-        <ArrowLeft className="w-4 h-4" /> All photos
-      </Link>
+      <div className="flex items-center justify-between mb-8">
+        <Link
+          href="/admin/photos"
+          className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink-primary transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> All photos
+        </Link>
+
+        <div className="flex items-center gap-1">
+          {prevPhoto ? (
+            <Link
+              href={`/admin/photos/${encode(prevPhoto.id)}`}
+              className="p-1.5 rounded-lg text-ink-muted hover:text-ink-primary hover:bg-surface-2 transition-colors"
+              title={prevPhoto.title || prevPhoto.id}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Link>
+          ) : (
+            <span className="p-1.5 text-ink-muted/30"><ChevronLeft className="w-4 h-4" /></span>
+          )}
+
+          <span className="text-xs text-ink-muted px-1 tabular-nums">
+            {photoIndex + 1} / {photos.length}
+          </span>
+
+          {nextPhoto ? (
+            <Link
+              href={`/admin/photos/${encode(nextPhoto.id)}`}
+              className="p-1.5 rounded-lg text-ink-muted hover:text-ink-primary hover:bg-surface-2 transition-colors"
+              title={nextPhoto.title || nextPhoto.id}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          ) : (
+            <span className="p-1.5 text-ink-muted/30"><ChevronRight className="w-4 h-4" /></span>
+          )}
+        </div>
+      </div>
 
       <div className="flex gap-6 mb-8">
         <div className="relative w-32 h-32 rounded-lg overflow-hidden shrink-0 bg-surface-2">
