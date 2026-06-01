@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Upload, Sparkles, X, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -55,7 +54,6 @@ function Field({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PhotoUploadForm() {
-  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -81,8 +79,9 @@ export function PhotoUploadForm() {
   const [aiTags, setAiTags] = useState<string[]>([]);
 
   // UI state
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [suggestingTags, setSuggestingTags] = useState(false);
   const [suggestError, setSuggestError] = useState("");
 
@@ -94,6 +93,7 @@ export function PhotoUploadForm() {
     setPreviewUrl(null);
     setUploadStatus("idle");
     setErrorMsg("");
+    setSuccessMsg("");
 
     // Auto-fill title from filename (strip extension)
     if (!title) {
@@ -172,17 +172,9 @@ export function PhotoUploadForm() {
           ? (document.querySelector("meta[name=r2-public-url]") as HTMLMetaElement | null)?.content
           : undefined) ??
         "";
-      if (publicBase) {
-        const encoded = (json.r2Key as string)
-          .split("/")
-          .map(encodeURIComponent)
-          .join("/");
-        setPreviewUrl(`${publicBase}/${encoded}`);
-      }
+      const uploadedName = (json.r2Key as string).split("/").pop() ?? json.r2Key;
 
-      setUploadStatus("done");
-
-      // Auto-trigger AI tag suggestions after a successful upload
+      // Trigger AI suggestions in the background before resetting
       if (publicBase) {
         const encoded = (json.r2Key as string)
           .split("/")
@@ -190,6 +182,10 @@ export function PhotoUploadForm() {
           .join("/");
         fetchSuggestions(`${publicBase}/${encoded}`);
       }
+
+      // Reset form and show success banner
+      handleReset();
+      setSuccessMsg(`"${uploadedName}" subida correctamente.`);
     } catch (err) {
       setUploadStatus("error");
       setErrorMsg(String(err));
@@ -264,6 +260,11 @@ export function PhotoUploadForm() {
 
   return (
     <div className="space-y-6">
+      {successMsg && (
+        <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+          ✓ {successMsg}
+        </p>
+      )}
       {/* ── File picker ── */}
       <div>
         <input
@@ -370,8 +371,8 @@ export function PhotoUploadForm() {
               <p className="text-xs text-ink-muted mt-1">Separadas por comas.</p>
             </div>
 
-            {/* ── Suggested tags ── visible as soon as there's anything to show */}
-            {(exifTags.length > 0 || uploadStatus === "done") && (() => {
+            {/* ── Suggested tags ── visible as soon as there are exif tags */}
+            {exifTags.length > 0 && (() => {
               // Merge exif + ai, deduplicated
               const seen = new Set<string>();
               const allSuggestions = [...exifTags, ...aiTags].filter((t) => {
@@ -460,35 +461,18 @@ export function PhotoUploadForm() {
               {errorMsg}
             </p>
           )}
-          {uploadStatus === "done" && (
-            <p className="text-sm text-green-400 bg-green-500/10 rounded-lg px-3 py-2">
-              Photo uploaded successfully. Tags can still be refined above — edit
-              the photo to update metadata.
-            </p>
-          )}
 
           {/* ── Actions ── */}
           <div className="flex gap-3">
-            {uploadStatus !== "done" ? (
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={uploadStatus === "uploading"}
-                className="flex-1 py-2 rounded-lg bg-accent text-white text-sm font-medium
-                           hover:bg-accent/90 disabled:opacity-50 transition-colors"
-              >
-                {uploadStatus === "uploading" ? "Uploading…" : "Upload photo"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => router.push("/admin/photos")}
-                className="flex-1 py-2 rounded-lg bg-surface-2 border border-border text-ink-secondary text-sm
-                           hover:border-accent hover:text-accent transition-colors"
-              >
-                Go to photo list
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={uploadStatus === "uploading"}
+              className="flex-1 py-2 rounded-lg bg-accent text-white text-sm font-medium
+                         hover:bg-accent/90 disabled:opacity-50 transition-colors"
+            >
+              {uploadStatus === "uploading" ? "Subiendo…" : "Subir foto"}
+            </button>
 
             <button
               type="button"
