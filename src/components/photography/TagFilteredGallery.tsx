@@ -87,8 +87,10 @@ function Inner({ photos, gallerySlug, votes, lockedTag, tagConfig, locale }: Pro
 
   return (
     <>
+      <PhotoGallery photos={filteredPhotos} gallerySlug={gallerySlug} votes={votes} />
+
       {showTagSection && (
-        <div className="mb-6 space-y-3">
+        <div className="mt-8 space-y-3">
           {/* Active filter chips */}
           {activeTags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
@@ -153,8 +155,6 @@ function Inner({ photos, gallerySlug, votes, lockedTag, tagConfig, locale }: Pro
           )}
         </div>
       )}
-
-      <PhotoGallery photos={filteredPhotos} gallerySlug={gallerySlug} votes={votes} />
     </>
   );
 }
