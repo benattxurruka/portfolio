@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   # ── CI ───────────────────────────────────────────────────────────────────────
@@ -73,13 +74,9 @@ jobs:
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}' \
             "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-          echo "VERCEL_ORG_ID set:     ${{ secrets.VERCEL_ORG_ID != '' }}"
-          echo "VERCEL_PROJECT_ID set: ${{ secrets.VERCEL_PROJECT_ID != '' }}"
-          echo "VERCEL_TOKEN set:      ${{ secrets.VERCEL_TOKEN != '' }}"
-          echo "project.json: $(cat .vercel/project.json)"
         env:
           VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy to Vercel
-        run: vercel deploy --prod --debug --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}

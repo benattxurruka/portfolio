@@ -54,17 +54,20 @@ jobs:
           TOKEN_NAME="otlp-rotating"
 
           # ── Delete old rotating tokens ────────────────────────────────────
-          TOKENS=$(curl -sf "${BASE}/tokens" -H "$AUTH")
+          TOKENS=$(curl -sf "${BASE}/tokens" -H "$AUTH") \
+            || { echo "ERROR: failed to list Grafana tokens (HTTP error). Check GRAFANA_URL, GRAFANA_SERVICE_ACCOUNT_TOKEN, GRAFANA_OTLP_SA_ID."; exit 1; }
           echo "$TOKENS" | jq -r --arg name "$TOKEN_NAME" \
             '.[] | select(.name == $name) | .id' | while read -r id; do
-            curl -sf -X DELETE "${BASE}/tokens/${id}" -H "$AUTH" > /dev/null
+            curl -sf -X DELETE "${BASE}/tokens/${id}" -H "$AUTH" \
+              || echo "WARNING: failed to delete old token id=${id} (continuing)"
             echo "Deleted old token id=${id}"
           done
 
           # ── Create a new token (expires in 40 days) ───────────────────────
           RESPONSE=$(curl -sf -X POST "${BASE}/tokens" \
             -H "$AUTH" -H "Content-Type: application/json" \
-            -d "{\"name\": \"${TOKEN_NAME}\", \"secondsToLive\": 3456000}")
+            -d "{\"name\": \"${TOKEN_NAME}\", \"secondsToLive\": 3456000}") \
+            || { echo "ERROR: failed to create Grafana token (HTTP error). Response: $RESPONSE"; exit 1; }
 
           NEW_TOKEN=$(echo "$RESPONSE" | jq -r '.key')
           if [ -z "$NEW_TOKEN" ] || [ "$NEW_TOKEN" = "null" ]; then
@@ -99,19 +102,21 @@ jobs:
             | head -1)
 
           if [ -n "$EXISTING_ID" ]; then
-            curl -sf -X PATCH "${BASE}/${EXISTING_ID}?teamId=${VERCEL_TEAM_ID}" \
+            RESP=$(curl -sf -X PATCH "${BASE}/${EXISTING_ID}?teamId=${VERCEL_TEAM_ID}" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"value\": \"$OTLP_TOKEN\"}" > /dev/null
+              -d "{\"value\": \"$OTLP_TOKEN\"}" 2>&1) \
+              || { echo "ERROR: PATCH failed: $RESP"; exit 1; }
             echo "Updated GRAFANA_OTLP_TOKEN in Vercel (production)"
           else
-            curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+            RESP=$(curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
               -H "$AUTH" -H "Content-Type: application/json" \
               -d "{
                 \"key\":    \"GRAFANA_OTLP_TOKEN\",
                 \"value\":  \"$OTLP_TOKEN\",
                 \"type\":   \"sensitive\",
                 \"target\": [\"production\"]
-              }" > /dev/null
+              }" 2>&1) \
+              || { echo "ERROR: POST failed: $RESP"; exit 1; }
             echo "Created GRAFANA_OTLP_TOKEN in Vercel (production)"
           fi
 
