@@ -85,8 +85,9 @@ jobs:
           INSTANCE_ID:       ${{ secrets.GRAFANA_INSTANCE_ID }}
           SA_TOKEN:          ${{ steps.grafana.outputs.SA_TOKEN }}
         run: |
-          # Grafana OTLP Basic Auth format: base64("instanceId:serviceAccountToken")
-          OTLP_TOKEN=$(echo -n "${INSTANCE_ID}:${SA_TOKEN}" | base64 -w 0)
+          # The code in instrumentation.ts does the base64 encoding itself,
+          # so Vercel stores the raw "instanceId:serviceAccountToken" string.
+          OTLP_TOKEN="${INSTANCE_ID}:${SA_TOKEN}"
           echo "::add-mask::$OTLP_TOKEN"
 
           BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
