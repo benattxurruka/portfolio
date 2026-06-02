@@ -1,0 +1,124 @@
+name: Rotate Grafana OTLP Token
+
+# Runs on the 1st of every month at 09:00 UTC.
+# Can also be triggered manually from the Actions tab.
+#
+# HOW THE GRAFANA OTLP TOKEN WORKS
+# ----------------------------------
+# The OTLP gateway uses HTTP Basic Auth:
+#   username: Grafana Cloud instance/stack ID  (numeric, e.g. "123456")
+#   password: a service account token with Metrics/Logs/Traces writer role
+#
+# The token Vercel stores is base64("instanceId:serviceAccountToken").
+#
+# This workflow:
+#   1. Creates a new service account token in your Grafana stack using the
+#      existing GRAFANA_SERVICE_ACCOUNT_TOKEN (which has Editor role).
+#   2. Base64-encodes "{instanceId}:{newToken}" and upserts it in Vercel
+#      as GRAFANA_OTLP_TOKEN.
+#   3. Deletes service account tokens older than 40 days (keep only the fresh one).
+#   4. Triggers a production redeploy.
+#
+# Required secrets (GitHub Actions environment: production):
+#   GRAFANA_URL                   — e.g. https://yourstack.grafana.net
+#   GRAFANA_SERVICE_ACCOUNT_TOKEN — Editor-role token (already set)
+#   GRAFANA_INSTANCE_ID           — Numeric stack/instance ID from Grafana Cloud portal
+#   GRAFANA_OTLP_SA_ID            — Service account ID used for OTLP (numeric)
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+
+on:
+  schedule:
+    - cron: '0 9 1 * *'
+  workflow_dispatch:
+
+jobs:
+  rotate:
+    name: Rotate Grafana OTLP token
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Create new service account token in Grafana
+        id: grafana
+        env:
+          GRAFANA_URL:   ${{ secrets.GRAFANA_URL }}
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          SA_ID:         ${{ secrets.GRAFANA_OTLP_SA_ID }}
+        run: |
+          BASE="${GRAFANA_URL}/api/serviceaccounts/${SA_ID}"
+          AUTH="Authorization: Bearer ${GRAFANA_TOKEN}"
+          TOKEN_NAME="otlp-rotating"
+
+          # ── Delete old rotating tokens ────────────────────────────────────
+          TOKENS=$(curl -sf "${BASE}/tokens" -H "$AUTH")
+          echo "$TOKENS" | jq -r --arg name "$TOKEN_NAME" \
+            '.[] | select(.name == $name) | .id' | while read -r id; do
+            curl -sf -X DELETE "${BASE}/tokens/${id}" -H "$AUTH" > /dev/null
+            echo "Deleted old token id=${id}"
+          done
+
+          # ── Create a new token (expires in 40 days) ───────────────────────
+          RESPONSE=$(curl -sf -X POST "${BASE}/tokens" \
+            -H "$AUTH" -H "Content-Type: application/json" \
+            -d "{\"name\": \"${TOKEN_NAME}\", \"secondsToLive\": 3456000}")
+
+          NEW_TOKEN=$(echo "$RESPONSE" | jq -r '.key')
+          if [ -z "$NEW_TOKEN" ] || [ "$NEW_TOKEN" = "null" ]; then
+            echo "ERROR: failed to create Grafana token"
+            echo "$RESPONSE" | jq .
+            exit 1
+          fi
+
+          echo "::add-mask::$NEW_TOKEN"
+          echo "SA_TOKEN=$NEW_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "New OTLP service account token created"
+
+      - name: Build and store OTLP token in Vercel
+        env:
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          INSTANCE_ID:       ${{ secrets.GRAFANA_INSTANCE_ID }}
+          SA_TOKEN:          ${{ steps.grafana.outputs.SA_TOKEN }}
+        run: |
+          # Grafana OTLP Basic Auth format: base64("instanceId:serviceAccountToken")
+          OTLP_TOKEN=$(echo -n "${INSTANCE_ID}:${SA_TOKEN}" | base64 -w 0)
+          echo "::add-mask::$OTLP_TOKEN"
+
+          BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
+          AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
+
+          EXISTING_ID=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+            -H "$AUTH" \
+            | jq -r '.envs[] | select(.key == "GRAFANA_OTLP_TOKEN" and (.target | contains(["production"]))) | .id // empty' \
+            | head -1)
+
+          if [ -n "$EXISTING_ID" ]; then
+            curl -sf -X PATCH "${BASE}/${EXISTING_ID}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"value\": \"$OTLP_TOKEN\"}" > /dev/null
+            echo "Updated GRAFANA_OTLP_TOKEN in Vercel (production)"
+          else
+            curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{
+                \"key\":    \"GRAFANA_OTLP_TOKEN\",
+                \"value\":  \"$OTLP_TOKEN\",
+                \"type\":   \"sensitive\",
+                \"target\": [\"production\"]
+              }" > /dev/null
+            echo "Created GRAFANA_OTLP_TOKEN in Vercel (production)"
+          fi
+
+      - name: Trigger production redeploy
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/dispatches" \
+            -d '{"ref": "main"}'
+          echo "Deploy workflow dispatched on main"
