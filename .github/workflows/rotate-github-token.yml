@@ -71,7 +71,9 @@ jobs:
         id: gen
         run: |
           # openssl genrsa outputs PKCS#1 PEM — the format GitHub App expects.
-          NEW_PRIVATE_KEY=$(openssl genrsa 4096 2>/dev/null)
+          # -traditional is required on OpenSSL 3.x (Ubuntu 22.04+) to get
+          # "BEGIN RSA PRIVATE KEY" (PKCS#1) instead of "BEGIN PRIVATE KEY" (PKCS#8).
+          NEW_PRIVATE_KEY=$(openssl genrsa -traditional 4096 2>/dev/null)
           NEW_PUBLIC_KEY=$(echo "$NEW_PRIVATE_KEY" | openssl rsa -pubout 2>/dev/null)
 
           echo "::add-mask::$NEW_PRIVATE_KEY"
@@ -109,19 +111,19 @@ jobs:
             | head -1)
 
           if [ -n "$EXISTING_ID" ]; then
-            curl -sf -X PATCH "${BASE}/${EXISTING_ID}?teamId=${VERCEL_TEAM_ID}" \
+            RESP=$(curl -sf -X PATCH "${BASE}/${EXISTING_ID}?teamId=${VERCEL_TEAM_ID}" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"value\": ${ENCODED_KEY}}" > /dev/null
+              -d "{\"value\": ${ENCODED_KEY}}" 2>&1) || { echo "PATCH failed: $RESP"; exit 1; }
             echo "Updated GH_APP_PRIVATE_KEY_NEXT in Vercel (staging)"
           else
-            curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+            RESP=$(curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
               -H "$AUTH" -H "Content-Type: application/json" \
               -d "{
                 \"key\":    \"GH_APP_PRIVATE_KEY_NEXT\",
                 \"value\":  ${ENCODED_KEY},
                 \"type\":   \"sensitive\",
                 \"target\": [\"production\"]
-              }" > /dev/null
+              }" 2>&1) || { echo "POST failed: $RESP"; exit 1; }
             echo "Created GH_APP_PRIVATE_KEY_NEXT in Vercel (staging)"
           fi
 
@@ -233,24 +235,25 @@ jobs:
             | head -1)
 
           if [ -n "$ACTIVE_ID" ]; then
-            curl -sf -X PATCH "${BASE}/${ACTIVE_ID}?teamId=${VERCEL_TEAM_ID}" \
+            RESP=$(curl -sf -X PATCH "${BASE}/${ACTIVE_ID}?teamId=${VERCEL_TEAM_ID}" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"value\": ${ENCODED_KEY}}" > /dev/null
+              -d "{\"value\": ${ENCODED_KEY}}" 2>&1) || { echo "PATCH failed: $RESP"; exit 1; }
             echo "Updated GH_APP_PRIVATE_KEY in Vercel (production)"
           else
-            curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+            RESP=$(curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
               -H "$AUTH" -H "Content-Type: application/json" \
               -d "{
                 \"key\":    \"GH_APP_PRIVATE_KEY\",
                 \"value\":  ${ENCODED_KEY},
                 \"type\":   \"sensitive\",
                 \"target\": [\"production\"]
-              }" > /dev/null
+              }" 2>&1) || { echo "POST failed: $RESP"; exit 1; }
             echo "Created GH_APP_PRIVATE_KEY in Vercel (production)"
           fi
 
           # ── Delete the staging var ───────────────────────────────────────────
-          curl -sf -X DELETE "${BASE}/${NEXT_ID}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH" > /dev/null
+          RESP=$(curl -sf -X DELETE "${BASE}/${NEXT_ID}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH" 2>&1) \
+            || { echo "DELETE failed: $RESP"; exit 1; }
           echo "Deleted GH_APP_PRIVATE_KEY_NEXT staging var"
 
       - name: Trigger production redeploy
