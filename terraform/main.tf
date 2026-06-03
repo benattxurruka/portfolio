@@ -48,7 +48,11 @@ resource "grafana_rule_group" "portfolio_alerts" {
       }
       datasource_uid = var.prometheus_datasource_uid
       model = jsonencode({
-        expr          = "sum(rate(portfolio_http_requests_total{status=~\"5..\"}[5m])) / sum(rate(portfolio_http_requests_total[5m]))"
+        datasource = {
+          type = "prometheus"
+          uid  = var.prometheus_datasource_uid
+        }
+        expr          = "sum(rate(http_server_duration_milliseconds_count{http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count[5m]))"
         instant       = true
         intervalMs    = 1000
         maxDataPoints = 43200
