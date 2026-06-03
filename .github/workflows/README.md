@@ -46,7 +46,6 @@ All workflows use the `production` GitHub Actions environment. Secrets must be s
 | `GRAFANA_INSTANCE_ID` | rotate-grafana | Numeric Grafana Cloud stack/instance ID |
 | `GRAFANA_URL` | terraform | Grafana stack URL (e.g. `https://yourstack.grafana.net`) |
 | `GRAFANA_SERVICE_ACCOUNT_TOKEN` | terraform | Grafana service account token with Editor role |
-| `TF_API_TOKEN` | terraform | Terraform Cloud API token |
 
 ---
 

@@ -38,12 +38,10 @@ jobs:
         env:
           GRAFANA_URL:       ${{ secrets.GRAFANA_URL }}
           GRAFANA_SA_TOKEN:  ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
-          TF_API_TOKEN:      ${{ secrets.TF_API_TOKEN }}
         run: |
           missing=()
           [ -z "$GRAFANA_URL" ]      && missing+=("GRAFANA_URL")
           [ -z "$GRAFANA_SA_TOKEN" ] && missing+=("GRAFANA_SERVICE_ACCOUNT_TOKEN")
-          [ -z "$TF_API_TOKEN" ]     && missing+=("TF_API_TOKEN")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "ERROR: Missing production secrets: ${missing[*]}"
             echo "Set them at: Repository → Settings → Environments → production → Environment secrets"
@@ -55,8 +53,6 @@ jobs:
           terraform_version: "~1.9"
 
       - name: Init
-        env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
         run: terraform init
 
       - name: Format check
@@ -157,8 +153,6 @@ jobs:
           terraform_version: "~1.9"
 
       - name: Init
-        env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
         run: terraform init
 
       - name: Download plan
