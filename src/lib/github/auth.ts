@@ -4,13 +4,14 @@
  * Why this instead of a static PAT?
  *   - Installation tokens are short-lived (≤ 1 hour) and generated automatically,
  *     so there is nothing to manually rotate.
- *   - The only long-lived credential is the App private key, which is rotated
- *     annually via the rotate-github-token workflow.
+ *   - The only long-lived credential is the App private key, rotated annually.
  *   - A PAT that never expires is a security liability; this eliminates it.
  *
  * Required Vercel env vars:
- *   GH_APP_ID               — numeric GitHub App ID (e.g. "123456")
+ *   GH_APP_CLIENT_ID        — client_id string shown in App settings (e.g. "Iv23li...")
+ *                             NOT the numeric App ID — GitHub uses client_id as the JWT issuer
  *   GH_APP_INSTALLATION_ID  — ID of the App installation on your account
+ *                             (github.com/settings/installations → click app → ID in URL)
  *   GH_APP_PRIVATE_KEY      — RSA private key PEM, newlines stored as \n
  */
 
@@ -92,12 +93,12 @@ export async function getInstallationToken(
  *   3. Unauthenticated                (60 req/h rate limit)
  */
 export async function resolveGitHubAuthHeader(): Promise<string | undefined> {
-  const appId          = process.env.GH_APP_ID?.trim();
+  const clientId       = process.env.GH_APP_CLIENT_ID?.trim();
   const installationId = process.env.GH_APP_INSTALLATION_ID?.trim();
   const privateKey     = process.env.GH_APP_PRIVATE_KEY?.trim();
 
-  if (appId && installationId && privateKey) {
-    const token = await getInstallationToken(appId, privateKey, installationId);
+  if (clientId && installationId && privateKey) {
+    const token = await getInstallationToken(clientId, privateKey, installationId);
     return `Bearer ${token}`;
   }
 
