@@ -2,7 +2,6 @@
   "title": "Portfolio — Photo Metrics",
   "uid": "portfolio-photo-metrics",
   "schemaVersion": 39,
-  "version": 1,
   "refresh": "30s",
   "time": { "from": "now-7d", "to": "now" },
   "timezone": "browser",
