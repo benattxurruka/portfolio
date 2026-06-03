@@ -8,22 +8,22 @@ terraform {
     }
   }
 
-  # Remote state — configure to match your backend.
-  # Option A: Terraform Cloud / HCP Terraform
-  # backend "remote" {
-  #   organization = "your-org"
-  #   workspaces {
-  #     name = "portfolio"
-  #   }
-  # }
-  #
-  # Option B: S3-compatible (e.g. Cloudflare R2 or AWS S3)
-  # backend "s3" {
-  #   bucket = "your-tfstate-bucket"
-  #   key    = "portfolio/terraform.tfstate"
-  #   region = "auto"
-  #   ...
-  # }
+  # State stored in Cloudflare R2 (S3-compatible).
+  # Credentials and endpoint are passed at `terraform init` time — never stored here.
+  # Required secrets: TF_STATE_R2_ACCESS_KEY_ID, TF_STATE_R2_SECRET_ACCESS_KEY
+  # Required secret:  CLOUDFLARE_ACCOUNT_ID (already used by rotate-cloudflare workflow)
+  # One-time setup: create a dedicated bucket named "portfolio-tfstate" in Cloudflare R2,
+  # then create a non-rotating R2 API token with admin read+write on that bucket.
+  backend "s3" {
+    bucket                      = "portfolio-tfstate"
+    key                         = "portfolio.tfstate"
+    region                      = "auto"
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    force_path_style            = true
+    # endpoint passed via -backend-config at init time
+  }
 }
 
 provider "grafana" {

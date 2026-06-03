@@ -38,10 +38,16 @@ jobs:
         env:
           GRAFANA_URL:       ${{ secrets.GRAFANA_URL }}
           GRAFANA_SA_TOKEN:  ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          R2_ACCESS_KEY:     ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          R2_SECRET_KEY:     ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+          CF_ACCOUNT_ID:     ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           missing=()
           [ -z "$GRAFANA_URL" ]      && missing+=("GRAFANA_URL")
           [ -z "$GRAFANA_SA_TOKEN" ] && missing+=("GRAFANA_SERVICE_ACCOUNT_TOKEN")
+          [ -z "$R2_ACCESS_KEY" ]    && missing+=("TF_STATE_R2_ACCESS_KEY_ID")
+          [ -z "$R2_SECRET_KEY" ]    && missing+=("TF_STATE_R2_SECRET_ACCESS_KEY")
+          [ -z "$CF_ACCOUNT_ID" ]    && missing+=("CLOUDFLARE_ACCOUNT_ID")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "ERROR: Missing production secrets: ${missing[*]}"
             echo "Set them at: Repository → Settings → Environments → production → Environment secrets"
@@ -53,7 +59,13 @@ jobs:
           terraform_version: "~1.9"
 
       - name: Init
-        run: terraform init
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+          CF_ACCOUNT_ID:         ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          terraform init \
+            -backend-config="endpoint=https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
       - name: Format check
         run: terraform fmt -check -recursive
@@ -64,6 +76,9 @@ jobs:
       - name: Plan
         id: plan
         env:
+          AWS_ACCESS_KEY_ID:                     ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY:                 ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+          CF_ACCOUNT_ID:                         ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TF_VAR_grafana_url:                    ${{ secrets.GRAFANA_URL }}
           TF_VAR_grafana_service_account_token:  ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
           TF_VAR_prometheus_datasource_uid:      ${{ vars.GRAFANA_PROMETHEUS_DS_UID }}
@@ -153,7 +168,13 @@ jobs:
           terraform_version: "~1.9"
 
       - name: Init
-        run: terraform init
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+          CF_ACCOUNT_ID:         ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          terraform init \
+            -backend-config="endpoint=https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
       - name: Download plan
         uses: actions/download-artifact@v8
@@ -163,6 +184,9 @@ jobs:
 
       - name: Apply
         env:
+          AWS_ACCESS_KEY_ID:                     ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY:                 ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+          CF_ACCOUNT_ID:                         ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TF_VAR_grafana_url:                    ${{ secrets.GRAFANA_URL }}
           TF_VAR_grafana_service_account_token:  ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
           TF_VAR_prometheus_datasource_uid:      ${{ vars.GRAFANA_PROMETHEUS_DS_UID }}

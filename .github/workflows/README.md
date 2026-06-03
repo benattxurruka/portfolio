@@ -46,6 +46,8 @@ All workflows use the `production` GitHub Actions environment. Secrets must be s
 | `GRAFANA_INSTANCE_ID` | rotate-grafana | Numeric Grafana Cloud stack/instance ID |
 | `GRAFANA_URL` | terraform | Grafana stack URL (e.g. `https://yourstack.grafana.net`) |
 | `GRAFANA_SERVICE_ACCOUNT_TOKEN` | terraform | Grafana service account token with Editor role |
+| `TF_STATE_R2_ACCESS_KEY_ID` | terraform | R2 access key for the `portfolio-tfstate` state bucket (non-rotating) |
+| `TF_STATE_R2_SECRET_ACCESS_KEY` | terraform | R2 secret key for the `portfolio-tfstate` state bucket (non-rotating) |
 
 ---
 
@@ -164,10 +166,20 @@ curl -s -X DELETE "https://www.grafana.com/api/v1/tokens/TOKEN_ID?region=${REGIO
 
 ### `terraform.yml`
 
-Runs automatically when `terraform/**` files change. To run locally:
+Runs automatically when `terraform/**` files change.
+
+**One-time setup — Cloudflare R2 state bucket:**
+
+1. Create a bucket named `portfolio-tfstate` in the Cloudflare R2 dashboard
+2. Create a **non-rotating** R2 API token with **Admin Read & Write** on that bucket
+3. Add the resulting access key ID and secret key as GitHub secrets `TF_STATE_R2_ACCESS_KEY_ID` and `TF_STATE_R2_SECRET_ACCESS_KEY`
+
+**To run locally:**
 
 ```bash
-export TF_TOKEN_app_terraform_io="your_terraform_cloud_token"
+export AWS_ACCESS_KEY_ID="your_tf_state_r2_access_key_id"
+export AWS_SECRET_ACCESS_KEY="your_tf_state_r2_secret_access_key"
+export CF_ACCOUNT_ID="your_cloudflare_account_id"
 export TF_VAR_grafana_url="https://yourstack.grafana.net"
 export TF_VAR_grafana_service_account_token="your_grafana_sa_token"
 export TF_VAR_prometheus_datasource_uid="your_prometheus_uid"
@@ -175,7 +187,7 @@ export TF_VAR_loki_datasource_uid="your_loki_uid"
 export TF_VAR_tempo_datasource_uid="your_tempo_uid"
 
 cd terraform
-terraform init
+terraform init -backend-config="endpoint=https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
 terraform plan
 terraform apply   # only when ready to apply changes
 ```
