@@ -64,8 +64,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
           CF_ACCOUNT_ID:         ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          terraform init \
-            -backend-config="endpoint=https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          printf 'endpoints = { s3 = "https://%s.r2.cloudflarestorage.com" }\n' \
+            "$CF_ACCOUNT_ID" > /tmp/r2-backend.tfvars
+          terraform init -backend-config=/tmp/r2-backend.tfvars
 
       - name: Format check
         run: terraform fmt -check -recursive
@@ -173,8 +174,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
           CF_ACCOUNT_ID:         ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          terraform init \
-            -backend-config="endpoint=https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          printf 'endpoints = { s3 = "https://%s.r2.cloudflarestorage.com" }\n' \
+            "$CF_ACCOUNT_ID" > /tmp/r2-backend.tfvars
+          terraform init -backend-config=/tmp/r2-backend.tfvars
 
       - name: Download plan
         uses: actions/download-artifact@v8
