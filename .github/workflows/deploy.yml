@@ -7,14 +7,15 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ── CI ───────────────────────────────────────────────────────────────────────
   # Runs on every push and PR. Fails fast so broken PRs never reach deploy.
   ci:
     name: Lint & Build
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
