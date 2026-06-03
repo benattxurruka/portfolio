@@ -50,7 +50,8 @@ jobs:
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_ADMIN_TOKEN }}
           POLICY_ID:       ${{ secrets.GRAFANA_CLOUD_ACCESS_POLICY_ID }}
         run: |
-          BASE="https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens"
+          REGION="prod-eu-west-0"
+          BASE="https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens?region=${REGION}"
           AUTH="Authorization: Bearer ${GRAFANA_API_KEY}"
           TOKEN_NAME="otlp-rotating"
 
@@ -71,7 +72,7 @@ jobs:
             '.items[] | select(.name == $name) |
              select(.createdAt | if . then (gsub("\\.[0-9]+Z$";"Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) else 0 end < $cutoff) |
              .id' | while read -r id; do
-            curl -sf -X DELETE "https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens/${id}" \
+            curl -sf -X DELETE "https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens/${id}?region=${REGION}" \
               -H "$AUTH" \
               || echo "WARNING: failed to delete token id=${id} (continuing)"
             echo "Deleted old token id=${id}"
