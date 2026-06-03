@@ -55,8 +55,15 @@ jobs:
           TOKEN_NAME="otlp-rotating"
 
           # ── Delete old rotating tokens ────────────────────────────────────
-          TOKENS=$(curl -sf "${BASE}" -H "$AUTH") \
-            || { echo "ERROR: Failed to list Cloud Access Policy tokens. Check GRAFANA_ADMIN_TOKEN and GRAFANA_CLOUD_ACCESS_POLICY_ID."; exit 1; }
+          HTTP_RESP=$(curl -s -w "\n%{http_code}" "${BASE}" -H "$AUTH")
+          HTTP_CODE=$(echo "$HTTP_RESP" | tail -1)
+          TOKENS=$(echo "$HTTP_RESP" | head -n -1)
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: GET ${BASE} returned HTTP ${HTTP_CODE}"
+            echo "Response body: $TOKENS"
+            echo "Check GRAFANA_ADMIN_TOKEN and GRAFANA_CLOUD_ACCESS_POLICY_ID."
+            exit 1
+          fi
 
           CUTOFF=$(date -d '40 days ago' +%s 2>/dev/null || date -v-40d +%s)
 
