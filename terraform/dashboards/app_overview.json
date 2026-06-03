@@ -96,8 +96,10 @@
       "datasource": { "type": "tempo", "uid": "${tempo_ds_uid}" },
       "targets": [
         {
+          "datasource": { "type": "tempo", "uid": "${tempo_ds_uid}" },
           "queryType": "traceql",
-          "query": "{.service.name = \"portfolio\"}",
+          "query": "{resource.service.name = \"portfolio\"}",
+          "limit": 20,
           "refId": "A"
         }
       ]
