@@ -34,7 +34,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Check required secrets
+        env:
+          GRAFANA_URL:       ${{ secrets.GRAFANA_URL }}
+          GRAFANA_SA_TOKEN:  ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          TF_API_TOKEN:      ${{ secrets.TF_API_TOKEN }}
+        run: |
+          missing=()
+          [ -z "$GRAFANA_URL" ]      && missing+=("GRAFANA_URL")
+          [ -z "$GRAFANA_SA_TOKEN" ] && missing+=("GRAFANA_SERVICE_ACCOUNT_TOKEN")
+          [ -z "$TF_API_TOKEN" ]     && missing+=("TF_API_TOKEN")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing production secrets: ${missing[*]}"
+            echo "Set them at: Repository → Settings → Environments → production → Environment secrets"
+            exit 1
+          fi
+
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.9"
 
@@ -114,7 +130,7 @@ jobs:
       # Persist the plan file so the apply job can use it without re-running plan
       - name: Upload plan
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tfplan
           path: terraform/tfplan
@@ -136,7 +152,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.9"
 
@@ -146,7 +162,7 @@ jobs:
         run: terraform init
 
       - name: Download plan
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tfplan
           path: terraform
