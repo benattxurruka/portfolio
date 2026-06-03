@@ -82,17 +82,39 @@ jobs:
             import crypto from 'crypto';
             import https from 'https';
 
+            function normalizePem(raw) {
+              // Un-escape any form of encoded newline that survives env var round-trips
+              let s = raw
+                .replace(/\\r\\n/g, '\n')
+                .replace(/\\n/g, '\n')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .trim();
+              // Un-quote if Vercel wrapped the value in JSON quotes
+              if (s.startsWith('"') && s.endsWith('"')) {
+                try { s = JSON.parse(s); } catch {}
+              }
+              // Re-wrap: extract header/footer, strip all whitespace from body,
+              // then fold at 64 chars — canonical PEM that every OpenSSL accepts.
+              const hdr = s.match(/-----BEGIN [^-]+-----/)?.[0];
+              const ftr = s.match(/-----END [^-]+-----/)?.[0];
+              if (hdr && ftr) {
+                const body = s.slice(s.indexOf(hdr) + hdr.length, s.lastIndexOf(ftr)).replace(/\s/g, '');
+                const wrapped = (body.match(/.{1,64}/g) ?? []).join('\n');
+                s = `${hdr}\n${wrapped}\n${ftr}`;
+              }
+              return s;
+            }
+
             const appId = process.env.APP_ID;
-            const pem   = process.env.PRIVATE_KEY
-              .replace(/\\r\\n/g, '\n')
-              .replace(/\\n/g, '\n')
-              .trim();
+            const pem   = normalizePem(process.env.PRIVATE_KEY);
+            const key   = crypto.createPrivateKey({ key: pem, format: 'pem' });
 
             const now     = Math.floor(Date.now() / 1000);
             const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
             const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId })).toString('base64url');
             const body    = `${header}.${payload}`;
-            const sig     = crypto.createSign('RSA-SHA256').update(body).sign(pem, 'base64url');
+            const sig     = crypto.createSign('RSA-SHA256').update(body).sign(key, 'base64url');
             const jwt     = `${body}.${sig}`;
 
             const data = await new Promise((resolve, reject) => {
@@ -182,19 +204,36 @@ jobs:
             import crypto from 'crypto';
             import https from 'https';
 
+            function normalizePem(raw) {
+              let s = raw
+                .replace(/\\r\\n/g, '\n')
+                .replace(/\\n/g, '\n')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .trim();
+              if (s.startsWith('"') && s.endsWith('"')) {
+                try { s = JSON.parse(s); } catch {}
+              }
+              const hdr = s.match(/-----BEGIN [^-]+-----/)?.[0];
+              const ftr = s.match(/-----END [^-]+-----/)?.[0];
+              if (hdr && ftr) {
+                const body = s.slice(s.indexOf(hdr) + hdr.length, s.lastIndexOf(ftr)).replace(/\s/g, '');
+                const wrapped = (body.match(/.{1,64}/g) ?? []).join('\n');
+                s = `${hdr}\n${wrapped}\n${ftr}`;
+              }
+              return s;
+            }
+
             const appId   = process.env.APP_ID;
             const keepId  = Number(process.env.KEEP_KEY_ID);
-            const pem     = process.env.PRIVATE_KEY
-              .replace(/\\r\\n/g, '\n')
-              .replace(/\\n/g, '\n')
-              .trim();
+            const key     = crypto.createPrivateKey({ key: normalizePem(process.env.PRIVATE_KEY), format: 'pem' });
 
             function makeJWT() {
               const now     = Math.floor(Date.now() / 1000);
               const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
               const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId })).toString('base64url');
               const body    = `${header}.${payload}`;
-              const sig     = crypto.createSign('RSA-SHA256').update(body).sign(pem, 'base64url');
+              const sig     = crypto.createSign('RSA-SHA256').update(body).sign(key, 'base64url');
               return `${body}.${sig}`;
             }
 

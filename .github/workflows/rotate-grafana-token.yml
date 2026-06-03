@@ -5,25 +5,27 @@ name: Rotate Grafana OTLP Token
 #
 # HOW THE GRAFANA OTLP TOKEN WORKS
 # ----------------------------------
-# The OTLP gateway uses HTTP Basic Auth:
-#   username: Grafana Cloud instance/stack ID  (numeric, e.g. "123456")
-#   password: a service account token with Metrics/Logs/Traces writer role
+# The OTLP gateway authenticates via HTTP Basic Auth:
+#   username: Grafana Cloud instance/stack ID  (numeric)
+#   password: a Cloud Access Policy token with metrics/logs/traces write scopes
 #
-# The token Vercel stores is base64("instanceId:serviceAccountToken").
+# Vercel stores the raw "instanceId:cloudAccessPolicyToken" string.
+# The code in instrumentation.ts base64-encodes it for the Authorization header.
 #
 # This workflow:
-#   1. Creates a new service account token in your Grafana stack using the
-#      existing GRAFANA_SERVICE_ACCOUNT_TOKEN (which has Editor role).
-#   2. Base64-encodes "{instanceId}:{newToken}" and upserts it in Vercel
-#      as GRAFANA_OTLP_TOKEN.
-#   3. Deletes service account tokens older than 40 days (keep only the fresh one).
-#   4. Triggers a production redeploy.
+#   1. Creates a new token under the existing Cloud Access Policy via the
+#      Grafana Cloud API (grafana.com/api), authenticated with a Cloud API key.
+#   2. Stores "{instanceId}:{newToken}" in Vercel as GRAFANA_OTLP_TOKEN.
+#   3. Triggers a production redeploy.
+#   4. Deletes all tokens in that policy older than 40 days.
 #
 # Required secrets (GitHub Actions environment: production):
-#   GRAFANA_URL                   — e.g. https://yourstack.grafana.net
-#   GRAFANA_SERVICE_ACCOUNT_TOKEN — Editor-role token (already set)
-#   GRAFANA_INSTANCE_ID           — Numeric stack/instance ID from Grafana Cloud portal
-#   GRAFANA_OTLP_SA_ID            — Service account ID used for OTLP (numeric)
+#   GRAFANA_ADMIN_TOKEN           — Token from a Cloud Access Policy with
+#                                   accesspolicies:read + accesspolicies:write scopes
+#                                   (grafana.com → Security → Access Policies)
+#   GRAFANA_CLOUD_ACCESS_POLICY_ID — ID of the OTLP Cloud Access Policy (numeric,
+#                                   visible in the URL when editing the policy)
+#   GRAFANA_INSTANCE_ID           — Numeric stack/instance ID from grafana.com
 #   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
 
 on:
@@ -42,62 +44,67 @@ jobs:
       actions: write
 
     steps:
-      - name: Create new service account token in Grafana
+      - name: Create new Cloud Access Policy token
         id: grafana
         env:
-          GRAFANA_URL:   ${{ secrets.GRAFANA_URL }}
-          GRAFANA_TOKEN: ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
-          SA_ID:         ${{ secrets.GRAFANA_OTLP_SA_ID }}
+          GRAFANA_API_KEY: ${{ secrets.GRAFANA_ADMIN_TOKEN }}
+          POLICY_ID:       ${{ secrets.GRAFANA_CLOUD_ACCESS_POLICY_ID }}
         run: |
-          BASE="${GRAFANA_URL}/api/serviceaccounts/${SA_ID}"
-          AUTH="Authorization: Bearer ${GRAFANA_TOKEN}"
+          BASE="https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens"
+          AUTH="Authorization: Bearer ${GRAFANA_API_KEY}"
           TOKEN_NAME="otlp-rotating"
 
           # ── Delete old rotating tokens ────────────────────────────────────
-          TOKENS=$(curl -sf "${BASE}/tokens" -H "$AUTH") \
-            || { echo "ERROR: failed to list Grafana tokens (HTTP error). Check GRAFANA_URL, GRAFANA_SERVICE_ACCOUNT_TOKEN, GRAFANA_OTLP_SA_ID."; exit 1; }
-          echo "$TOKENS" | jq -r --arg name "$TOKEN_NAME" \
-            '.[] | select(.name == $name) | .id' | while read -r id; do
-            curl -sf -X DELETE "${BASE}/tokens/${id}" -H "$AUTH" \
-              || echo "WARNING: failed to delete old token id=${id} (continuing)"
+          TOKENS=$(curl -sf "${BASE}" -H "$AUTH") \
+            || { echo "ERROR: Failed to list Cloud Access Policy tokens. Check GRAFANA_CLOUD_API_KEY and GRAFANA_CLOUD_ACCESS_POLICY_ID."; exit 1; }
+
+          CUTOFF=$(date -d '40 days ago' +%s 2>/dev/null || date -v-40d +%s)
+
+          echo "$TOKENS" | jq -r --arg name "$TOKEN_NAME" --argjson cutoff "$CUTOFF" \
+            '.items[] | select(.name == $name) |
+             select(.createdAt | if . then (gsub("\\.[0-9]+Z$";"Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) else 0 end < $cutoff) |
+             .id' | while read -r id; do
+            curl -sf -X DELETE "https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens/${id}" \
+              -H "$AUTH" \
+              || echo "WARNING: failed to delete token id=${id} (continuing)"
             echo "Deleted old token id=${id}"
           done
 
           # ── Create a new token (expires in 40 days) ───────────────────────
-          RESPONSE=$(curl -sf -X POST "${BASE}/tokens" \
-            -H "$AUTH" -H "Content-Type: application/json" \
-            -d "{\"name\": \"${TOKEN_NAME}\", \"secondsToLive\": 3456000}") \
-            || { echo "ERROR: failed to create Grafana token (HTTP error). Response: $RESPONSE"; exit 1; }
+          EXPIRY=$(date -u -d '40 days' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \
+            || date -u -v+40d '+%Y-%m-%dT%H:%M:%SZ')
 
-          NEW_TOKEN=$(echo "$RESPONSE" | jq -r '.key')
+          RESPONSE=$(curl -sf -X POST "${BASE}" \
+            -H "$AUTH" -H "Content-Type: application/json" \
+            -d "{\"name\": \"${TOKEN_NAME}\", \"expiresAt\": \"${EXPIRY}\"}") \
+            || { echo "ERROR: Failed to create Cloud Access Policy token: $RESPONSE"; exit 1; }
+
+          NEW_TOKEN=$(echo "$RESPONSE" | jq -r '.token')
           if [ -z "$NEW_TOKEN" ] || [ "$NEW_TOKEN" = "null" ]; then
-            echo "ERROR: failed to create Grafana token"
+            echo "ERROR: unexpected response from Grafana Cloud API"
             echo "$RESPONSE" | jq .
             exit 1
           fi
 
           echo "::add-mask::$NEW_TOKEN"
-          echo "SA_TOKEN=$NEW_TOKEN" >> "$GITHUB_OUTPUT"
-          echo "New OTLP service account token created"
+          echo "TOKEN=$NEW_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "New Cloud Access Policy token created"
 
-      - name: Build and store OTLP token in Vercel
+      - name: Store OTLP token in Vercel
         env:
           VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           INSTANCE_ID:       ${{ secrets.GRAFANA_INSTANCE_ID }}
-          SA_TOKEN:          ${{ steps.grafana.outputs.SA_TOKEN }}
+          NEW_TOKEN:         ${{ steps.grafana.outputs.TOKEN }}
         run: |
-          # The code in instrumentation.ts does the base64 encoding itself,
-          # so Vercel stores the raw "instanceId:serviceAccountToken" string.
-          OTLP_TOKEN="${INSTANCE_ID}:${SA_TOKEN}"
+          OTLP_TOKEN="${INSTANCE_ID}:${NEW_TOKEN}"
           echo "::add-mask::$OTLP_TOKEN"
 
           BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
           AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
 
-          EXISTING_ID=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" \
-            -H "$AUTH" \
+          EXISTING_ID=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH" \
             | jq -r '.envs[] | select(.key == "GRAFANA_OTLP_TOKEN" and (.target | contains(["production"]))) | .id // empty' \
             | head -1)
 
@@ -122,9 +129,10 @@ jobs:
 
       - name: Trigger production redeploy
         run: |
-          curl -sf -X POST \
+          RESP=$(curl -sf -X POST \
             -H "Authorization: Bearer ${{ github.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/dispatches" \
-            -d '{"ref": "main"}'
+            -d '{"ref": "main"}' 2>&1) \
+            || { echo "ERROR: dispatch failed: $RESP"; exit 1; }
           echo "Deploy workflow dispatched on main"
