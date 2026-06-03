@@ -36,7 +36,7 @@ A personal portfolio with a photography gallery and GitHub projects feed. Built 
 
 ### Infrastructure & CI/CD
 - **Vercel** — production deployments triggered by GitHub Actions on push to `main`
-- **Token rotation** — automated monthly rotation of Cloudflare R2 and Grafana tokens; annual rotation of the GitHub App key
+- **Token rotation** — automated monthly rotation of Cloudflare R2 and Grafana tokens; GitHub App private key rotated manually once a year (see `.github/workflows/README.md`)
 - **Terraform** — Grafana dashboards and alerts managed as code
 
 ---
@@ -170,7 +170,6 @@ terraform/
 ├── deploy.yml                  # Lint, build, deploy
 ├── terraform.yml               # Grafana dashboard deployment
 ├── rotate-cloudflare-token.yml # Monthly R2 token rotation
-├── rotate-github-token.yml     # Annual GitHub App key rotation
 ├── rotate-grafana-token.yml    # Monthly Grafana OTLP token rotation
 └── README.md                   # Secrets reference and local testing guide
 ```

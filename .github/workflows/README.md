@@ -6,7 +6,6 @@
 |---|---|---|
 | `deploy.yml` | Push to `main`, PR, manual | Lint, build, deploy to Vercel |
 | `rotate-cloudflare-token.yml` | 1st of month, manual | Rotate Cloudflare R2 API token |
-| `rotate-github-token.yml` | 1 January, manual | Rotate GitHub App private key |
 | `rotate-grafana-token.yml` | 1st of month, manual | Rotate Grafana OTLP Cloud Access Policy token |
 | `terraform.yml` | Push/PR to `terraform/**`, manual | Plan and apply Grafana dashboards |
 
@@ -42,15 +41,29 @@ All workflows use the `production` GitHub Actions environment. Secrets must be s
 | `NEXT_PUBLIC_SENTRY_DSN` | deploy | Sentry DSN |
 | `CLOUDFLARE_ACCOUNT_ID` | rotate-cloudflare | Cloudflare account ID |
 | `CLOUDFLARE_ADMIN_TOKEN` | rotate-cloudflare | Cloudflare token with R2 token management rights |
-| `GH_CLIENT_ID` | rotate-github | GitHub App client ID (`Iv23li...` string, shown in App settings) |
-| `GH_APP_PRIVATE_KEY` | rotate-github | Current GitHub App private key PEM (also stored in Vercel for the app) |
-| `GH_PAT` | rotate-github | Classic PAT (or fine-grained PAT with **Secrets: Read/write**) — required to update `GH_APP_PRIVATE_KEY` after rotation; `github.token` cannot write environment secrets |
 | `GRAFANA_ADMIN_TOKEN` | rotate-grafana | Cloud Access Policy token with `accesspolicies:read/write` scopes |
 | `GRAFANA_CLOUD_ACCESS_POLICY_ID` | rotate-grafana | ID of the OTLP Cloud Access Policy |
 | `GRAFANA_INSTANCE_ID` | rotate-grafana | Numeric Grafana Cloud stack/instance ID |
 | `GRAFANA_URL` | terraform | Grafana stack URL (e.g. `https://yourstack.grafana.net`) |
 | `GRAFANA_SERVICE_ACCOUNT_TOKEN` | terraform | Grafana service account token with Editor role |
 | `TF_API_TOKEN` | terraform | Terraform Cloud API token |
+
+---
+
+## GitHub App private key — manual annual rotation
+
+GitHub's REST API does not support creating keys for user-owned GitHub Apps (`POST /app/keys` returns 404). Rotate the key manually once a year:
+
+1. Go to **github.com/settings/apps → your App → Private keys → Generate a private key**
+2. Download the new `.pem` file
+3. Update the key in Vercel (used by the app at runtime):
+   ```bash
+   vercel env rm GH_TOKEN production
+   # Paste the full PEM content when prompted — or use the Vercel dashboard
+   ```
+4. Revoke the old key in the GitHub App settings
+
+> **Do not copy/paste PEM content through the clipboard** — it corrupts newlines. Use the Vercel dashboard or `< file` redirection.
 
 ---
 
@@ -69,8 +82,6 @@ All workflows use the `production` GitHub Actions environment. Secrets must be s
 > | `https://yourstack.grafana.net` | grafana.com → your stack → Stack URL |
 > | `your_grafana_sa_token` | Grafana → Administration → Service Accounts |
 > | `your_prometheus_uid` / `your_loki_uid` / `your_tempo_uid` | Grafana → Connections → Data sources → each source's UID |
-> | `Iv23liXXXXXXXXXX` (CLIENT_ID) | github.com/settings/apps → your App → Client ID |
-> | `/path/to/key.pem` | Path to the downloaded `.pem` file — never copy/paste, always use the file directly |
 > | `TOKEN_ID` | The `id` field returned by the Grafana token creation response |
 >
 > Never commit these values — use your password manager or `gh secret list` to recall names.
@@ -115,74 +126,6 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/
     \"ttlSeconds\": 3456000
   }" | jq '{accessKeyId: .result.accessKeyId, ok: .success}'
 ```
-
----
-
-### `rotate-github-token.yml`
-
-The workflow reads the current private key from the `GH_APP_PRIVATE_KEY` GitHub Actions secret (not from Vercel — Vercel's API cannot decrypt `sensitive`-type env vars with standard tokens).
-
-**One-time setup — store the current private key as a GitHub Actions secret:**
-```bash
-# Always use the downloaded .pem file directly — do NOT copy/paste (clipboard mangles PEM newlines)
-gh secret set GH_APP_PRIVATE_KEY --env production --repo your-username/portfolio < /path/to/key.pem
-```
-
-**Environment variables for local testing:**
-```bash
-# CLIENT_ID: github.com/settings/apps → your App → Client ID (Iv23li... string, shown near the top)
-export CLIENT_ID="Iv23liXXXXXXXXXX"
-```
-
-**Step 1 — copy the current key from the GitHub Actions secret into `/tmp/current-key.pem`:**
-
-Copy the downloaded .pem file directly — do NOT use the clipboard:
-```bash
-cp /path/to/key.pem /tmp/current-key.pem
-head -1 /tmp/current-key.pem   # should print: -----BEGIN RSA PRIVATE KEY-----
-```
-
-**Step 2 — verify JWT auth against GitHub (read-only, lists existing keys):**
-
-Save as `/tmp/gh-rotate-test.mjs` and run with `CLIENT_ID=$CLIENT_ID node /tmp/gh-rotate-test.mjs`:
-
-```js
-import crypto from 'crypto';
-import https from 'https';
-import fs from 'fs';
-
-const clientId = process.env.CLIENT_ID;
-const key = crypto.createPrivateKey(fs.readFileSync('/tmp/current-key.pem'));
-const now = Math.floor(Date.now() / 1000);
-const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 540, iss: clientId })).toString('base64url');
-const body    = `${header}.${payload}`;
-const sig     = crypto.sign('sha256', Buffer.from(body), { key, padding: crypto.constants.RSA_PKCS1_PADDING }).toString('base64url');
-const jwt     = `${body}.${sig}`;
-
-const res = await new Promise((resolve, reject) => {
-  const req = https.request({
-    hostname: 'api.github.com', path: '/app', method: 'GET',
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'portfolio-key-rotation',
-    },
-  }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ status: res.statusCode, body: d })); });
-  req.on('error', reject); req.end();
-});
-
-console.log('Status:', res.status);
-if (res.status === 200) {
-  const app = JSON.parse(res.body);
-  console.log('App:', app.slug, '— JWT auth works, rotation script will succeed.');
-} else {
-  console.log('Body:', res.body);
-}
-```
-
-`Status: 200` with the app slug means the JWT auth works and the rotation script will succeed.
 
 ---
 
