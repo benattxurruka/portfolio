@@ -7,6 +7,7 @@ import { getTagConfig } from "@/lib/r2/tagConfig";
 import { deriveGalleries, deriveTags } from "@/lib/utils/galleries";
 import { mergeTagConfig, getTagLabel } from "@/lib/utils/tagNormalization";
 import { GalleryGrid } from "@/components/photography/GalleryGrid";
+import { headers } from "next/headers";
 import { recordPageView } from "@/lib/otel/metrics";
 
 export const metadata: Metadata = {
@@ -16,7 +17,8 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function PhotographyPage() {
-  try { recordPageView("photography"); } catch {}
+  const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
+  try { recordPageView("photography", country); } catch {}
   const [photos, t, locale, r2TagConfig] = await Promise.all([
     getPhotos(),
     getTranslations("Photography"),

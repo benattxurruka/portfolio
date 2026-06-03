@@ -9,6 +9,7 @@ import { getTagConfig } from "@/lib/r2/tagConfig";
 import { deriveTags, getPhotosByTag } from "@/lib/utils/galleries";
 import { normalizeTag, mergeTagConfig, getTagLabel } from "@/lib/utils/tagNormalization";
 import { TagFilteredGallery } from "@/components/photography/TagFilteredGallery";
+import { headers } from "next/headers";
 import { recordPageView } from "@/lib/otel/metrics";
 
 export const revalidate = 300;
@@ -47,7 +48,8 @@ export default async function TagGalleryPage({ params }: Props) {
     redirect(`/photography/tag/${encodeURIComponent(canonical)}`);
   }
 
-  try { recordPageView(`tag/${canonical}`); } catch {}
+  const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
+  try { recordPageView(`tag/${canonical}`, country); } catch {}
 
   const allTags = deriveTags(photos, tagConfig);
   if (!allTags.includes(canonical)) notFound();

@@ -9,6 +9,7 @@ import { getTagConfig } from "@/lib/r2/tagConfig";
 import { resolveGallery } from "@/lib/utils/galleries";
 import { mergeTagConfig } from "@/lib/utils/tagNormalization";
 import { TagFilteredGallery } from "@/components/photography/TagFilteredGallery";
+import { headers } from "next/headers";
 import { recordPageView } from "@/lib/otel/metrics";
 
 export const revalidate = 300;
@@ -29,7 +30,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function GalleryPage({ params }: Props) {
   const { gallery: slug } = await params;
-  try { recordPageView(`gallery/${slug}`); } catch {}
+  const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
+  try { recordPageView(`gallery/${slug}`, country); } catch {}
 
   const [photos, votes, t, locale, r2TagConfig] = await Promise.all([
     getPhotos(),

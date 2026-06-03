@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { recordPhotoView, recordPhotoViewDuration } from "@/lib/otel/metrics";
 import { logger } from "@/lib/otel/logger";
 
@@ -8,7 +9,8 @@ export async function recordView(
   gallerySlug: string
 ): Promise<void> {
   try {
-    recordPhotoView(photoId, gallerySlug);
+    const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
+    recordPhotoView(photoId, gallerySlug, country);
   } catch (err) {
     logger.warn("[view] Failed to record view metric", {
       photo_id: photoId,

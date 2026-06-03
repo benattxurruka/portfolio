@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import "./globals.css";
@@ -23,16 +23,19 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [locale, messages, cookieStore] = await Promise.all([
+  const [locale, messages, cookieStore, reqHeaders] = await Promise.all([
     getLocale(),
     getMessages(),
     await cookies(),
+    await headers(),
   ]);
+
+  const country = reqHeaders.get("x-vercel-ip-country") ?? undefined;
 
   // Derive the initial html class server-side to reduce flash on first load.
   // "system" (and no cookie) cannot be resolved server-side — leave the class
   // empty and let ThemeScript correct it client-side before first paint.
-  recordSessionLanguage(locale);
+  recordSessionLanguage(locale, country);
 
   // Derive the initial html class server-side to reduce flash on first load.
   // "system" (and no cookie) cannot be resolved server-side — leave the class

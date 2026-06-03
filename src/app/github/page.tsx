@@ -3,6 +3,7 @@ import { Github, ExternalLink } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import * as Sentry from "@sentry/nextjs";
 import { RepoGrid } from "@/components/github/RepoGrid";
+import { headers } from "next/headers";
 import { recordPageView } from "@/lib/otel/metrics";
 import { logger } from "@/lib/otel/logger";
 import { fetchGitHubRepos } from "@/lib/github/repos";
@@ -23,7 +24,8 @@ async function getRepos(): Promise<GitHubRepo[]> {
 }
 
 export default async function GitHubPage() {
-  try { recordPageView("github"); } catch {}
+  const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
+  try { recordPageView("github", country); } catch {}
   const [repos, t] = await Promise.all([getRepos(), getTranslations("GitHub")]);
 
   const username = process.env.GITHUB_USERNAME ?? "";

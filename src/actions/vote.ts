@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { incrementVote, decrementVote } from "@/lib/r2/votes";
 import { recordPhotoVote } from "@/lib/otel/metrics";
 import { logger } from "@/lib/otel/logger";
@@ -23,7 +24,8 @@ export async function voteForPhoto(
 
     // Record OTel metric — fire-and-forget (do not fail the action if it throws)
     try {
-      recordPhotoVote(photoId, gallerySlug);
+      const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
+      recordPhotoVote(photoId, gallerySlug, country);
     } catch (metricErr) {
       logger.warn("[vote] Failed to record OTel metric", {
         photo_id: photoId,

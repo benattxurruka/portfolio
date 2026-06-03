@@ -27,27 +27,37 @@ let _pageViewCounter: ReturnType<
 /** Increment when a photo slideshow view is opened */
 export function recordPhotoView(
   photoId: string,
-  gallerySlug: string
+  gallerySlug: string,
+  country?: string
 ): void {
   if (!_photoViewCounter) {
     _photoViewCounter = getMeter().createCounter("portfolio.photo.views", {
       description: "Number of times a photo was opened in the slideshow",
     });
   }
-  _photoViewCounter.add(1, { photo_id: photoId, gallery: gallerySlug });
+  _photoViewCounter.add(1, {
+    photo_id: photoId,
+    gallery: gallerySlug,
+    ...(country ? { country } : {}),
+  });
 }
 
 /** Increment when a user casts a vote on a photo */
 export function recordPhotoVote(
   photoId: string,
-  gallerySlug: string
+  gallerySlug: string,
+  country?: string
 ): void {
   if (!_photoVoteCounter) {
     _photoVoteCounter = getMeter().createCounter("portfolio.photo.votes", {
       description: "Number of votes cast on a photo",
     });
   }
-  _photoVoteCounter.add(1, { photo_id: photoId, gallery: gallerySlug });
+  _photoVoteCounter.add(1, {
+    photo_id: photoId,
+    gallery: gallerySlug,
+    ...(country ? { country } : {}),
+  });
 }
 
 /**
@@ -71,13 +81,13 @@ export function recordPhotoViewDuration(
 }
 
 /** Increment on any page load */
-export function recordPageView(page: string): void {
+export function recordPageView(page: string, country?: string): void {
   if (!_pageViewCounter) {
     _pageViewCounter = getMeter().createCounter("portfolio.page.views", {
       description: "Number of page views",
     });
   }
-  _pageViewCounter.add(1, { page });
+  _pageViewCounter.add(1, { page, ...(country ? { country } : {}) });
 }
 
 let _sessionLanguageCounter: ReturnType<
@@ -85,7 +95,7 @@ let _sessionLanguageCounter: ReturnType<
 > | null = null;
 
 /** Increment on each request to track which locale is active */
-export function recordSessionLanguage(locale: string): void {
+export function recordSessionLanguage(locale: string, country?: string): void {
   if (!_sessionLanguageCounter) {
     _sessionLanguageCounter = getMeter().createCounter(
       "portfolio.session.language",
@@ -94,5 +104,5 @@ export function recordSessionLanguage(locale: string): void {
       }
     );
   }
-  _sessionLanguageCounter.add(1, { locale });
+  _sessionLanguageCounter.add(1, { locale, ...(country ? { country } : {}) });
 }

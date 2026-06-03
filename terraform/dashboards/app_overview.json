@@ -101,6 +101,50 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "id": 7,
+      "title": "Page Views by Country",
+      "type": "geomap",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
+      "targets": [
+        {
+          "expr": "sum by (country) (increase(portfolio_page_views_total[$__range]))",
+          "instant": true,
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "view": { "id": "zero", "lat": 30, "lon": 0, "zoom": 1 },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showScale": false
+        },
+        "basemap": { "type": "default", "name": "Basemap" },
+        "layers": [
+          {
+            "type": "choropleth",
+            "name": "Page Views",
+            "config": {
+              "style": {
+                "palette": "interpolateYlOrRd",
+                "colorScale": "linear"
+              }
+            },
+            "location": {
+              "mode": "lookup",
+              "gazetteer": "public/gazetteer/countries.json",
+              "lookup": "country"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": { "mode": "details" }
+      }
     }
   ]
 }
