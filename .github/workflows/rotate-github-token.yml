@@ -8,18 +8,27 @@ name: Rotate GitHub App Private Key
 # GitHub generates the new RSA key pair and returns the private key PEM.
 # This avoids the need to upload custom public keys through the UI.
 #
+# The current private key is stored in TWO places that must stay in sync:
+#   • Vercel env var GH_APP_PRIVATE_KEY  — used by the running app
+#   • GitHub Actions secret GH_APP_PRIVATE_KEY (environment: production)
+#                                         — used by this rotation workflow
+#
+# Vercel sensitive env vars cannot be decrypted via the API with standard tokens,
+# so this workflow reads the key from the GitHub Actions secret instead.
+#
 # Steps:
-#   1. Fetch the current GH_APP_PRIVATE_KEY from Vercel (to sign the App JWT).
-#      Written to /tmp/current-key.pem — never passed through GITHUB_OUTPUT to
-#      avoid multi-line escaping issues in YAML expression interpolation.
+#   1. Write secrets.GH_APP_PRIVATE_KEY → /tmp/current-key.pem.
 #   2. Authenticate as the GitHub App and call POST /app/keys → new private key.
 #      Written to /tmp/new-key.pem.
 #   3. Store the new private key in Vercel as GH_APP_PRIVATE_KEY.
-#   4. Trigger a production redeploy.
-#   5. Delete all old keys from the GitHub App (only the new one remains).
+#   4. Update the GitHub Actions environment secret GH_APP_PRIVATE_KEY.
+#   5. Trigger a production redeploy.
+#   6. Delete old keys from the GitHub App settings page manually if needed:
+#      github.com/settings/apps/[app-slug] → Private keys → revoke old ones.
 #
 # Required secrets (GitHub Actions environment: production):
-#   GH_APP_ID             — numeric GitHub App ID (same as the Vercel env var)
+#   GH_APP_PRIVATE_KEY    — current GitHub App private key PEM
+#   GH_CLIENT_ID          — GitHub App client ID (Iv23li... string, shown in App settings)
 #   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
 
 on:
@@ -36,79 +45,34 @@ jobs:
     permissions:
       contents: read
       actions: write   # dispatch the deploy workflow
+      secrets: write   # update the GH_APP_PRIVATE_KEY environment secret
 
     steps:
-      - name: Fetch current private key from Vercel
-        id: fetch
+      - name: Write current private key to file
         env:
-          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
         run: |
-          BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
-          AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
-
-          ENVS=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH") \
-            || { echo "ERROR: Failed to list Vercel env vars"; exit 1; }
-
-          KEY_ENV_ID=$(echo "$ENVS" \
-            | jq -r '.envs[] | select(.key == "GH_APP_PRIVATE_KEY" and (.target | contains(["production"]))) | .id // empty' \
-            | head -1)
-
-          if [ -z "$KEY_ENV_ID" ]; then
-            echo "ERROR: GH_APP_PRIVATE_KEY not found in Vercel. Set it up manually first."
-            exit 1
-          fi
-
-          # Write key to a temp file — avoids multi-line YAML expression issues
-          # that occur when passing PEM through GITHUB_OUTPUT interpolation.
-          curl -sf "${BASE}/${KEY_ENV_ID}?teamId=${VERCEL_TEAM_ID}&decrypt=true" \
-            -H "$AUTH" | jq -r '.value' > /tmp/current-key.pem \
-            || { echo "ERROR: Failed to decrypt GH_APP_PRIVATE_KEY"; exit 1; }
-
-          echo "KEY_ENV_ID=$KEY_ENV_ID" >> "$GITHUB_OUTPUT"
-          echo "Fetched current private key from Vercel → /tmp/current-key.pem"
+          printf '%s\n' "$GH_APP_PRIVATE_KEY" > /tmp/current-key.pem
+          head -1 /tmp/current-key.pem   # should print: -----BEGIN RSA PRIVATE KEY-----
 
       - name: Create new key via GitHub App API
         id: newkey
         env:
-          APP_ID: ${{ secrets.GH_APP_ID }}
+          CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
         run: |
           NEW_KEY_JSON=$(node --input-type=module <<'EOF'
             import crypto from 'crypto';
             import https from 'https';
             import fs from 'fs';
 
-            function normalizePem(raw) {
-              let s = raw
-                .replace(/\\r\\n/g, '\n')
-                .replace(/\\n/g, '\n')
-                .replace(/\r\n/g, '\n')
-                .replace(/\r/g, '\n')
-                .trim();
-              if (s.startsWith('"') && s.endsWith('"')) {
-                try { s = JSON.parse(s); } catch {}
-              }
-              const hdr = s.match(/-----BEGIN [^-]+-----/)?.[0];
-              const ftr = s.match(/-----END [^-]+-----/)?.[0];
-              if (hdr && ftr) {
-                const body = s.slice(s.indexOf(hdr) + hdr.length, s.lastIndexOf(ftr)).replace(/\s/g, '');
-                const wrapped = (body.match(/.{1,64}/g) ?? []).join('\n');
-                s = `${hdr}\n${wrapped}\n${ftr}`;
-              }
-              return s;
-            }
-
-            const appId = process.env.APP_ID;
-            const pem   = normalizePem(fs.readFileSync('/tmp/current-key.pem', 'utf8'));
-            const key   = crypto.createPrivateKey({ key: pem, format: 'pem' });
-
-            const now     = Math.floor(Date.now() / 1000);
-            const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-            const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId })).toString('base64url');
-            const body    = `${header}.${payload}`;
-            const sig     = crypto.createSign('RSA-SHA256').update(body).sign(key, 'base64url');
-            const jwt     = `${body}.${sig}`;
+            const clientId = process.env.CLIENT_ID;
+            const key      = crypto.createPrivateKey(fs.readFileSync('/tmp/current-key.pem'));
+            const now      = Math.floor(Date.now() / 1000);
+            const header   = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+            const payload  = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 540, iss: clientId })).toString('base64url');
+            const body     = `${header}.${payload}`;
+            const sig      = crypto.sign('sha256', Buffer.from(body), { key, padding: crypto.constants.RSA_PKCS1_PADDING }).toString('base64url');
+            const jwt      = `${body}.${sig}`;
 
             const data = await new Promise((resolve, reject) => {
               const req = https.request({
@@ -149,7 +113,7 @@ jobs:
             exit 1
           fi
 
-          # Write new key to temp file — same reason as above
+          # Write new key to temp file — avoids multi-line YAML expression issues
           echo "$NEW_PRIVATE_KEY" > /tmp/new-key.pem
 
           echo "NEW_KEY_ID=$NEW_KEY_ID" >> "$GITHUB_OUTPUT"
@@ -160,17 +124,45 @@ jobs:
           VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          KEY_ENV_ID:        ${{ steps.fetch.outputs.KEY_ENV_ID }}
         run: |
           BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
           AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
           ENCODED_KEY=$(jq -Rs . < /tmp/new-key.pem)
 
-          RESP=$(curl -sf -X PATCH "${BASE}/${KEY_ENV_ID}?teamId=${VERCEL_TEAM_ID}" \
-            -H "$AUTH" -H "Content-Type: application/json" \
-            -d "{\"value\": ${ENCODED_KEY}}" 2>&1) \
-            || { echo "ERROR: PATCH failed: $RESP"; exit 1; }
-          echo "Updated GH_APP_PRIVATE_KEY in Vercel (production)"
+          # Look up the env var ID (no decryption needed — just the metadata)
+          KEY_ENV_ID=$(curl -sf "${BASE}?teamId=${VERCEL_TEAM_ID}" -H "$AUTH" \
+            | jq -r '.envs[] | select(.key == "GH_APP_PRIVATE_KEY" and (.target | contains(["production"]))) | .id // empty' \
+            | head -1) \
+            || { echo "ERROR: Failed to list Vercel env vars"; exit 1; }
+
+          if [ -n "$KEY_ENV_ID" ]; then
+            RESP=$(curl -sf -X PATCH "${BASE}/${KEY_ENV_ID}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"value\": ${ENCODED_KEY}}" 2>&1) \
+              || { echo "ERROR: PATCH failed: $RESP"; exit 1; }
+            echo "Updated GH_APP_PRIVATE_KEY in Vercel (production)"
+          else
+            RESP=$(curl -sf -X POST "${BASE}?teamId=${VERCEL_TEAM_ID}" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{
+                \"key\":    \"GH_APP_PRIVATE_KEY\",
+                \"value\":  ${ENCODED_KEY},
+                \"type\":   \"sensitive\",
+                \"target\": [\"production\"]
+              }" 2>&1) \
+              || { echo "ERROR: POST failed: $RESP"; exit 1; }
+            echo "Created GH_APP_PRIVATE_KEY in Vercel (production)"
+          fi
+
+      - name: Update GitHub Actions environment secret
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh secret set GH_APP_PRIVATE_KEY \
+            --env production \
+            --repo "${{ github.repository }}" \
+            < /tmp/new-key.pem
+          echo "Updated GH_APP_PRIVATE_KEY GitHub Actions secret"
 
       - name: Trigger production redeploy
         run: |
@@ -182,86 +174,7 @@ jobs:
             || { echo "ERROR: dispatch failed: $RESP"; exit 1; }
           echo "Deploy workflow dispatched on main"
 
-      - name: Delete old keys from GitHub App
-        env:
-          APP_ID:      ${{ secrets.GH_APP_ID }}
-          KEEP_KEY_ID: ${{ steps.newkey.outputs.NEW_KEY_ID }}
+      - name: Clean up old keys
         run: |
-          node --input-type=module <<'EOF'
-            import crypto from 'crypto';
-            import https from 'https';
-            import fs from 'fs';
-
-            function normalizePem(raw) {
-              let s = raw
-                .replace(/\\r\\n/g, '\n')
-                .replace(/\\n/g, '\n')
-                .replace(/\r\n/g, '\n')
-                .replace(/\r/g, '\n')
-                .trim();
-              if (s.startsWith('"') && s.endsWith('"')) {
-                try { s = JSON.parse(s); } catch {}
-              }
-              const hdr = s.match(/-----BEGIN [^-]+-----/)?.[0];
-              const ftr = s.match(/-----END [^-]+-----/)?.[0];
-              if (hdr && ftr) {
-                const body = s.slice(s.indexOf(hdr) + hdr.length, s.lastIndexOf(ftr)).replace(/\s/g, '');
-                const wrapped = (body.match(/.{1,64}/g) ?? []).join('\n');
-                s = `${hdr}\n${wrapped}\n${ftr}`;
-              }
-              return s;
-            }
-
-            const appId  = process.env.APP_ID;
-            const keepId = Number(process.env.KEEP_KEY_ID);
-            const key    = crypto.createPrivateKey({
-              key: normalizePem(fs.readFileSync('/tmp/new-key.pem', 'utf8')),
-              format: 'pem',
-            });
-
-            function makeJWT() {
-              const now     = Math.floor(Date.now() / 1000);
-              const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-              const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId })).toString('base64url');
-              const body    = `${header}.${payload}`;
-              const sig     = crypto.createSign('RSA-SHA256').update(body).sign(key, 'base64url');
-              return `${body}.${sig}`;
-            }
-
-            async function api(method, path, expectedStatus = 200) {
-              return new Promise((resolve, reject) => {
-                const req = https.request({
-                  hostname: 'api.github.com',
-                  path,
-                  method,
-                  headers: {
-                    Authorization:          `Bearer ${makeJWT()}`,
-                    Accept:                 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28',
-                    'User-Agent':           'portfolio-key-rotation',
-                    'Content-Length':       0,
-                  },
-                }, res => {
-                  let body = '';
-                  res.on('data', c => body += c);
-                  res.on('end', () => {
-                    if (res.statusCode !== expectedStatus) {
-                      reject(new Error(`${method} ${path} → ${res.statusCode}: ${body}`));
-                    } else {
-                      resolve(body ? JSON.parse(body) : null);
-                    }
-                  });
-                });
-                req.on('error', reject);
-                req.end();
-              });
-            }
-
-            const keys = await api('GET', '/app/keys');
-            for (const k of keys) {
-              if (k.id === keepId) continue;
-              await api('DELETE', `/app/keys/${k.id}`, 204);
-              console.log(`Deleted old key id=${k.id}`);
-            }
-            console.log(`Done — only key id=${keepId} remains`);
-          EOF
+          echo "Rotation complete. Delete any old private keys manually if needed:"
+          echo "github.com/settings/apps/${{ github.repository_owner }}/portfolio-benat → Private keys"
