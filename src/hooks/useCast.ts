@@ -137,7 +137,7 @@ export function useCast(): CastControls {
       s.src = CAST_SDK;
       document.head.appendChild(s);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const startCast = useCallback(() => {
     ctxRef.current?.requestSession().catch(() => {});

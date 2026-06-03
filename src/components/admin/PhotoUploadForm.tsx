@@ -89,7 +89,6 @@ export function PhotoUploadForm() {
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
-    setPreviewUrl(null);
     setUploadStatus("idle");
     setErrorMsg("");
     setSuccessMsg("");
@@ -235,7 +234,6 @@ export function PhotoUploadForm() {
   function handleReset() {
     setFile(null);
     setPreview(null);
-    setPreviewUrl(null);
     setFolder("");
     setTitle("");
     setTakenAt("");
