@@ -32,7 +32,7 @@ jobs:
       plan-exitcode: ${{ steps.plan.outputs.exitcode }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -134,7 +134,7 @@ jobs:
       name: production   # requires manual approval if configured in repo settings
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: hashicorp/setup-terraform@v3
         with:
