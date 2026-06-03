@@ -47,32 +47,32 @@ jobs:
       - name: Create new Cloud Access Policy token
         id: grafana
         env:
-          GRAFANA_API_KEY: ${{ secrets.GRAFANA_ADMIN_TOKEN }}
+          GRAFANA_ACCESS_POLICY_ADMIN_TOKEN: ${{ secrets.GRAFANA_ADMIN_TOKEN }}
           POLICY_ID:       ${{ secrets.GRAFANA_CLOUD_ACCESS_POLICY_ID }}
         run: |
-          REGION="prod-eu-west-0"
-          BASE="https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens?region=${REGION}"
-          AUTH="Authorization: Bearer ${GRAFANA_API_KEY}"
+          REGION="prod-eu-central-0"
+          TOKENS_URL="https://www.grafana.com/api/v1/tokens?region=${REGION}"
+          AUTH="Authorization: Bearer ${GRAFANA_ACCESS_POLICY_ADMIN_TOKEN}"
           TOKEN_NAME="otlp-rotating"
 
           # ── Delete old rotating tokens ────────────────────────────────────
-          HTTP_RESP=$(curl -s -w "\n%{http_code}" "${BASE}" -H "$AUTH")
+          HTTP_RESP=$(curl -s -w "\n%{http_code}" "${TOKENS_URL}" -H "$AUTH")
           HTTP_CODE=$(echo "$HTTP_RESP" | tail -1)
-          TOKENS=$(echo "$HTTP_RESP" | head -n -1)
+          ALL_TOKENS=$(echo "$HTTP_RESP" | head -n -1)
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "ERROR: GET ${BASE} returned HTTP ${HTTP_CODE}"
-            echo "Response body: $TOKENS"
+            echo "ERROR: GET ${TOKENS_URL} returned HTTP ${HTTP_CODE}"
+            echo "Response body: $ALL_TOKENS"
             echo "Check GRAFANA_ADMIN_TOKEN and GRAFANA_CLOUD_ACCESS_POLICY_ID."
             exit 1
           fi
 
           CUTOFF=$(date -d '40 days ago' +%s 2>/dev/null || date -v-40d +%s)
 
-          echo "$TOKENS" | jq -r --arg name "$TOKEN_NAME" --argjson cutoff "$CUTOFF" \
-            '.items[] | select(.name == $name) |
+          echo "$ALL_TOKENS" | jq -r --arg name "$TOKEN_NAME" --arg pid "$POLICY_ID" --argjson cutoff "$CUTOFF" \
+            '.items[] | select(.name == $name and .accessPolicyId == $pid) |
              select(.createdAt | if . then (gsub("\\.[0-9]+Z$";"Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) else 0 end < $cutoff) |
              .id' | while read -r id; do
-            curl -sf -X DELETE "https://www.grafana.com/api/v1/accesspolicies/${POLICY_ID}/tokens/${id}?region=${REGION}" \
+            curl -sf -X DELETE "https://www.grafana.com/api/v1/tokens/${id}?region=${REGION}" \
               -H "$AUTH" \
               || echo "WARNING: failed to delete token id=${id} (continuing)"
             echo "Deleted old token id=${id}"
@@ -82,9 +82,9 @@ jobs:
           EXPIRY=$(date -u -d '40 days' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \
             || date -u -v+40d '+%Y-%m-%dT%H:%M:%SZ')
 
-          RESPONSE=$(curl -sf -X POST "${BASE}" \
+          RESPONSE=$(curl -sf -X POST "${TOKENS_URL}" \
             -H "$AUTH" -H "Content-Type: application/json" \
-            -d "{\"name\": \"${TOKEN_NAME}\", \"expiresAt\": \"${EXPIRY}\"}") \
+            -d "{\"name\": \"${TOKEN_NAME}\", \"accessPolicyId\": \"${POLICY_ID}\", \"expiresAt\": \"${EXPIRY}\"}") \
             || { echo "ERROR: Failed to create Cloud Access Policy token: $RESPONSE"; exit 1; }
 
           NEW_TOKEN=$(echo "$RESPONSE" | jq -r '.token')
