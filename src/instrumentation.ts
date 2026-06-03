@@ -52,6 +52,18 @@ export async function register() {
       Authorization: `Basic ${Buffer.from(otlpToken).toString("base64")}`,
     };
 
+    const metricReader = new PeriodicExportingMetricReader({
+      exporter: new OTLPMetricExporter({
+        url: `${otlpEndpoint}/v1/metrics`,
+        headers,
+      }),
+      // Short interval: Vercel function instances are short-lived. If the
+      // timer never fires before the instance is recycled, buffered metrics
+      // are lost. 10 s gives a reasonable chance of at least one export per
+      // active instance. The SIGTERM handler below flushes the rest.
+      exportIntervalMillis: 10_000,
+    });
+
     const sdk = new NodeSDK({
       resource: new Resource({
         [ATTR_SERVICE_NAME]: "portfolio",
@@ -64,13 +76,7 @@ export async function register() {
         headers,
       }),
 
-      metricReader: new PeriodicExportingMetricReader({
-        exporter: new OTLPMetricExporter({
-          url: `${otlpEndpoint}/v1/metrics`,
-          headers,
-        }),
-        exportIntervalMillis: 30_000,
-      }),
+      metricReader,
 
       // SimpleLogRecordProcessor ships every record immediately as its own
       // HTTP request — no buffering delay.  If the export fails the OTel
@@ -90,6 +96,15 @@ export async function register() {
 
     sdk.start();
     console.info("[otel] SDK started");
+
+    // Flush buffered metrics and traces before Vercel terminates the instance.
+    // Without this, any metrics recorded in the last ~10 s of an instance's
+    // life are silently dropped.
+    process.on("SIGTERM", () => {
+      sdk.shutdown().catch((err) =>
+        console.error("[otel] shutdown error", err)
+      );
+    });
 
     // ── Startup heartbeat ────────────────────────────────────────────────
     // This log record is exported immediately (SimpleLogRecordProcessor) and
