@@ -171,7 +171,7 @@
     {
       "id": 5,
       "title": "Top 10 Photos by Views (all-time)",
-      "type": "barchart",
+      "type": "bargauge",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
       "targets": [
@@ -182,14 +182,20 @@
           "instant": true
         }
       ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "color"
+      },
       "fieldConfig": {
-        "defaults": { "unit": "short" }
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }
       }
     },
     {
       "id": 6,
       "title": "Top 10 Photos by Votes (all-time)",
-      "type": "barchart",
+      "type": "bargauge",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
       "targets": [
@@ -200,8 +206,14 @@
           "instant": true
         }
       ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "color"
+      },
       "fieldConfig": {
-        "defaults": { "unit": "short" }
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }
       }
     },
     {
