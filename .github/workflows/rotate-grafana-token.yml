@@ -56,7 +56,7 @@ jobs:
 
           # ── Delete old rotating tokens ────────────────────────────────────
           TOKENS=$(curl -sf "${BASE}" -H "$AUTH") \
-            || { echo "ERROR: Failed to list Cloud Access Policy tokens. Check GRAFANA_CLOUD_API_KEY and GRAFANA_CLOUD_ACCESS_POLICY_ID."; exit 1; }
+            || { echo "ERROR: Failed to list Cloud Access Policy tokens. Check GRAFANA_ADMIN_TOKEN and GRAFANA_CLOUD_ACCESS_POLICY_ID."; exit 1; }
 
           CUTOFF=$(date -d '40 days ago' +%s 2>/dev/null || date -v-40d +%s)
 
