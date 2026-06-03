@@ -10,7 +10,10 @@ name: Rotate GitHub App Private Key
 #
 # Steps:
 #   1. Fetch the current GH_APP_PRIVATE_KEY from Vercel (to sign the App JWT).
+#      Written to /tmp/current-key.pem — never passed through GITHUB_OUTPUT to
+#      avoid multi-line escaping issues in YAML expression interpolation.
 #   2. Authenticate as the GitHub App and call POST /app/keys → new private key.
+#      Written to /tmp/new-key.pem.
 #   3. Store the new private key in Vercel as GH_APP_PRIVATE_KEY.
 #   4. Trigger a production redeploy.
 #   5. Delete all old keys from the GitHub App (only the new one remains).
@@ -57,45 +60,35 @@ jobs:
             exit 1
           fi
 
-          CURRENT_KEY=$(curl -sf "${BASE}/${KEY_ENV_ID}?teamId=${VERCEL_TEAM_ID}&decrypt=true" \
-            -H "$AUTH" | jq -r '.value') \
+          # Write key to a temp file — avoids multi-line YAML expression issues
+          # that occur when passing PEM through GITHUB_OUTPUT interpolation.
+          curl -sf "${BASE}/${KEY_ENV_ID}?teamId=${VERCEL_TEAM_ID}&decrypt=true" \
+            -H "$AUTH" | jq -r '.value' > /tmp/current-key.pem \
             || { echo "ERROR: Failed to decrypt GH_APP_PRIVATE_KEY"; exit 1; }
 
-          echo "::add-mask::$CURRENT_KEY"
-          {
-            echo "KEY_ENV_ID=$KEY_ENV_ID"
-            echo "CURRENT_KEY<<__EOF__"
-            echo "$CURRENT_KEY"
-            echo "__EOF__"
-          } >> "$GITHUB_OUTPUT"
-          echo "Fetched current private key from Vercel"
+          echo "KEY_ENV_ID=$KEY_ENV_ID" >> "$GITHUB_OUTPUT"
+          echo "Fetched current private key from Vercel → /tmp/current-key.pem"
 
       - name: Create new key via GitHub App API
         id: newkey
         env:
-          APP_ID:      ${{ secrets.GH_APP_ID }}
-          PRIVATE_KEY: ${{ steps.fetch.outputs.CURRENT_KEY }}
+          APP_ID: ${{ secrets.GH_APP_ID }}
         run: |
-          # Use Node.js (available on all GitHub runners) to sign the JWT and
-          # call the GitHub API — cleaner than doing base64url encoding in bash.
           NEW_KEY_JSON=$(node --input-type=module <<'EOF'
             import crypto from 'crypto';
             import https from 'https';
+            import fs from 'fs';
 
             function normalizePem(raw) {
-              // Un-escape any form of encoded newline that survives env var round-trips
               let s = raw
                 .replace(/\\r\\n/g, '\n')
                 .replace(/\\n/g, '\n')
                 .replace(/\r\n/g, '\n')
                 .replace(/\r/g, '\n')
                 .trim();
-              // Un-quote if Vercel wrapped the value in JSON quotes
               if (s.startsWith('"') && s.endsWith('"')) {
                 try { s = JSON.parse(s); } catch {}
               }
-              // Re-wrap: extract header/footer, strip all whitespace from body,
-              // then fold at 64 chars — canonical PEM that every OpenSSL accepts.
               const hdr = s.match(/-----BEGIN [^-]+-----/)?.[0];
               const ftr = s.match(/-----END [^-]+-----/)?.[0];
               if (hdr && ftr) {
@@ -107,7 +100,7 @@ jobs:
             }
 
             const appId = process.env.APP_ID;
-            const pem   = normalizePem(process.env.PRIVATE_KEY);
+            const pem   = normalizePem(fs.readFileSync('/tmp/current-key.pem', 'utf8'));
             const key   = crypto.createPrivateKey({ key: pem, format: 'pem' });
 
             const now     = Math.floor(Date.now() / 1000);
@@ -156,13 +149,10 @@ jobs:
             exit 1
           fi
 
-          echo "::add-mask::$NEW_PRIVATE_KEY"
-          {
-            echo "NEW_KEY_ID=$NEW_KEY_ID"
-            echo "NEW_PRIVATE_KEY<<__EOF__"
-            echo "$NEW_PRIVATE_KEY"
-            echo "__EOF__"
-          } >> "$GITHUB_OUTPUT"
+          # Write new key to temp file — same reason as above
+          echo "$NEW_PRIVATE_KEY" > /tmp/new-key.pem
+
+          echo "NEW_KEY_ID=$NEW_KEY_ID" >> "$GITHUB_OUTPUT"
           echo "Created new GitHub App key id=${NEW_KEY_ID}"
 
       - name: Store new private key in Vercel
@@ -170,12 +160,11 @@ jobs:
           VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID:    ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          NEW_PRIVATE_KEY:   ${{ steps.newkey.outputs.NEW_PRIVATE_KEY }}
           KEY_ENV_ID:        ${{ steps.fetch.outputs.KEY_ENV_ID }}
         run: |
           BASE="https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env"
           AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
-          ENCODED_KEY=$(echo "$NEW_PRIVATE_KEY" | jq -Rs .)
+          ENCODED_KEY=$(jq -Rs . < /tmp/new-key.pem)
 
           RESP=$(curl -sf -X PATCH "${BASE}/${KEY_ENV_ID}?teamId=${VERCEL_TEAM_ID}" \
             -H "$AUTH" -H "Content-Type: application/json" \
@@ -196,13 +185,12 @@ jobs:
       - name: Delete old keys from GitHub App
         env:
           APP_ID:      ${{ secrets.GH_APP_ID }}
-          PRIVATE_KEY: ${{ steps.newkey.outputs.NEW_PRIVATE_KEY }}
           KEEP_KEY_ID: ${{ steps.newkey.outputs.NEW_KEY_ID }}
         run: |
-          # Authenticate with the NEW key to list and delete all other keys.
           node --input-type=module <<'EOF'
             import crypto from 'crypto';
             import https from 'https';
+            import fs from 'fs';
 
             function normalizePem(raw) {
               let s = raw
@@ -224,9 +212,12 @@ jobs:
               return s;
             }
 
-            const appId   = process.env.APP_ID;
-            const keepId  = Number(process.env.KEEP_KEY_ID);
-            const key     = crypto.createPrivateKey({ key: normalizePem(process.env.PRIVATE_KEY), format: 'pem' });
+            const appId  = process.env.APP_ID;
+            const keepId = Number(process.env.KEEP_KEY_ID);
+            const key    = crypto.createPrivateKey({
+              key: normalizePem(fs.readFileSync('/tmp/new-key.pem', 'utf8')),
+              format: 'pem',
+            });
 
             function makeJWT() {
               const now     = Math.floor(Date.now() / 1000);
@@ -267,10 +258,10 @@ jobs:
             }
 
             const keys = await api('GET', '/app/keys');
-            for (const key of keys) {
-              if (key.id === keepId) continue;
-              await api('DELETE', `/app/keys/${key.id}`, 204);
-              console.log(`Deleted old key id=${key.id}`);
+            for (const k of keys) {
+              if (k.id === keepId) continue;
+              await api('DELETE', `/app/keys/${k.id}`, 204);
+              console.log(`Deleted old key id=${k.id}`);
             }
             console.log(`Done — only key id=${keepId} remains`);
           EOF
