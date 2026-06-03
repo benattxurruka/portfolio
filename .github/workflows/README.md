@@ -44,6 +44,7 @@ All workflows use the `production` GitHub Actions environment. Secrets must be s
 | `CLOUDFLARE_ADMIN_TOKEN` | rotate-cloudflare | Cloudflare token with R2 token management rights |
 | `GH_CLIENT_ID` | rotate-github | GitHub App client ID (`Iv23li...` string, shown in App settings) |
 | `GH_APP_PRIVATE_KEY` | rotate-github | Current GitHub App private key PEM (also stored in Vercel for the app) |
+| `GH_PAT` | rotate-github | Classic PAT (or fine-grained PAT with **Secrets: Read/write**) — required to update `GH_APP_PRIVATE_KEY` after rotation; `github.token` cannot write environment secrets |
 | `GRAFANA_ADMIN_TOKEN` | rotate-grafana | Cloud Access Policy token with `accesspolicies:read/write` scopes |
 | `GRAFANA_CLOUD_ACCESS_POLICY_ID` | rotate-grafana | ID of the OTLP Cloud Access Policy |
 | `GRAFANA_INSTANCE_ID` | rotate-grafana | Numeric Grafana Cloud stack/instance ID |
