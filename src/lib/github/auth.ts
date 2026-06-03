@@ -12,9 +12,8 @@
  *                        NOT the numeric App ID — GitHub uses client_id as the JWT issuer
  *   GH_APP_PRIVATE_KEY — RSA private key PEM, newlines stored as \n
  *
- * Optional:
- *   GH_APP_INSTALLATION_ID — if omitted, the installation is discovered automatically
- *                            via GET /app/installations (one extra call per cold start)
+ * The installation ID is always discovered automatically via GET /app/installations
+ * (one extra API call per cold start). GH_APP_INSTALLATION_ID is no longer used.
  */
 
 import crypto from "crypto";
@@ -28,12 +27,13 @@ function b64u(buf: Buffer): string {
  * Build a signed RS256 JWT for GitHub App authentication.
  * iat is backdated 60 s to tolerate clock skew; exp is 10 min ahead.
  */
-function makeAppJWT(clientId: string, privateKeyPem: string): string {
+function makeAppJWT(clientId: string, pem: string): string {
   const now     = Math.floor(Date.now() / 1000);
   const header  = b64u(Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })));
   const payload = b64u(Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 600, iss: clientId })));
   const body    = `${header}.${payload}`;
-  const sig     = b64u(crypto.createSign("RSA-SHA256").update(body).sign(privateKeyPem));
+  const key     = crypto.createPrivateKey(pem);
+  const sig     = b64u(crypto.sign("sha256", Buffer.from(body), { key, padding: crypto.constants.RSA_PKCS1_PADDING }));
   return `${body}.${sig}`;
 }
 
@@ -72,23 +72,19 @@ async function discoverInstallationId(jwt: string): Promise<string> {
 
 /**
  * Exchange a GitHub App JWT for a short-lived installation access token (max 1 h).
+ * The installation ID is always discovered automatically.
  */
 export async function getInstallationToken(
   clientId: string,
   privateKey: string,
-  installationId?: string,
 ): Promise<string> {
   const pem = normalizePem(privateKey);
   const jwt = makeAppJWT(clientId, pem);
-
-  const id = installationId || await discoverInstallationId(jwt);
+  const id  = await discoverInstallationId(jwt);
 
   const res = await fetch(
     `https://api.github.com/app/installations/${id}/access_tokens`,
-    {
-      method: "POST",
-      headers: { ...ghHeaders, Authorization: `Bearer ${jwt}` },
-    },
+    { method: "POST", headers: { ...ghHeaders, Authorization: `Bearer ${jwt}` } },
   );
 
   if (!res.ok) {
@@ -96,8 +92,7 @@ export async function getInstallationToken(
     throw new Error(`GitHub App auth failed (${res.status}): ${body}`);
   }
 
-  const data = (await res.json()) as { token: string };
-  return data.token;
+  return ((await res.json()) as { token: string }).token;
 }
 
 /**
@@ -109,12 +104,11 @@ export async function getInstallationToken(
  *   3. Unauthenticated                (60 req/h rate limit)
  */
 export async function resolveGitHubAuthHeader(): Promise<string | undefined> {
-  const clientId       = process.env.GH_APP_CLIENT_ID?.trim();
-  const privateKey     = process.env.GH_APP_PRIVATE_KEY?.trim();
-  const installationId = process.env.GH_APP_INSTALLATION_ID?.trim();
+  const clientId   = process.env.GH_APP_CLIENT_ID?.trim();
+  const privateKey = process.env.GH_APP_PRIVATE_KEY?.trim();
 
   if (clientId && privateKey) {
-    const token = await getInstallationToken(clientId, privateKey, installationId);
+    const token = await getInstallationToken(clientId, privateKey);
     return `Bearer ${token}`;
   }
 
