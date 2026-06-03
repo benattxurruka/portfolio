@@ -20,11 +20,6 @@ const CAST_SDK = "https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCas
 let _castReady = false;
 const _readyCallbacks: Array<() => void> = [];
 
-function onCastReady(cb: () => void) {
-  if (_castReady) { cb(); return; }
-  _readyCallbacks.push(cb);
-}
-
 function markCastReady() {
   _castReady = true;
   _readyCallbacks.splice(0).forEach((cb) => cb());

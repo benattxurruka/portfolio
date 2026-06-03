@@ -58,7 +58,6 @@ export function PhotoUploadForm() {
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null); // public URL after upload for tag suggestion
 
   // Form fields
   const [folder, setFolder] = useState("");

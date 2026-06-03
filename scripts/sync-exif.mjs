@@ -35,8 +35,7 @@
  */
 
 import { readdir, stat } from "node:fs/promises";
-import { join, basename } from "node:path";
-import { createReadStream } from "node:fs";
+import { join } from "node:path";
 import { S3Client, HeadObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { config as loadDotenv } from "dotenv";
 import exifr from "exifr";
