@@ -58,7 +58,13 @@ export async function POST(req: NextRequest) {
   if (lat) metadata["lat"] = lat;
   const lng = (formData.get("lng") as string | null)?.trim();
   if (lng) metadata["lng"] = lng;
-  if (folder) metadata["galleries"] = enc(folder);
+  const extraGalleries = (formData.get("extraGalleries") as string | null)
+    ?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
+  const galleryList = folder ? [folder] : [];
+  for (const g of extraGalleries) {
+    if (g !== folder) galleryList.push(g);
+  }
+  if (galleryList.length) metadata["galleries"] = galleryList.map(enc).join(",");
 
   // Width / height from exifr are passed as strings
   const width = (formData.get("width") as string | null)?.trim();

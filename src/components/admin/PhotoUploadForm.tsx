@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Upload, Sparkles, X, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -16,6 +16,7 @@ function Field({
   type = "text",
   step,
   required,
+  suggestions,
 }: {
   label: string;
   name: string;
@@ -26,10 +27,12 @@ function Field({
   type?: string;
   step?: string;
   required?: boolean;
+  suggestions?: string[];
 }) {
   const base =
     "w-full px-3 py-2 rounded-lg bg-surface-2 border border-border text-ink-primary text-sm " +
     "focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-ink-muted";
+  const listId = suggestions ? `${name}-suggestions` : undefined;
   return (
     <div>
       <label className="block text-sm text-ink-secondary mb-1" htmlFor={name}>
@@ -44,11 +47,50 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        list={listId}
         className={base}
+        autoComplete="off"
       />
+      {listId && (
+        <datalist id={listId}>
+          {suggestions!.map((s) => <option key={s} value={s} />)}
+        </datalist>
+      )}
       {hint && <p className="text-xs text-ink-muted mt-1">{hint}</p>}
     </div>
   );
+}
+
+// ── Image resize helper ───────────────────────────────────────────────────────
+
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024; // 3 MB
+
+async function resizeToLimit(
+  file: File,
+): Promise<{ file: File; width: number; height: number }> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, Math.sqrt(MAX_UPLOAD_BYTES / file.size) * 0.95);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+
+  for (const quality of [0.92, 0.8, 0.65]) {
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob(res, "image/jpeg", quality),
+    );
+    if (blob && (blob.size <= MAX_UPLOAD_BYTES || quality === 0.65)) {
+      const name = file.name.replace(/\.[^.]+$/, ".jpg");
+      return { file: new File([blob], name, { type: "image/jpeg" }), width: w, height: h };
+    }
+  }
+
+  // Unreachable in practice, but TypeScript needs a return path
+  throw new Error("Could not resize image below 3 MB");
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -60,7 +102,11 @@ export function PhotoUploadForm() {
   const [preview, setPreview] = useState<string | null>(null);
 
   // Form fields
-  const [folder, setFolder] = useState("");
+  const [folderType, setFolderType] = useState<"places" | "themes">("places");
+  const [folderName, setFolderName] = useState("");
+  const folder = folderName.trim()
+    ? `${folderType}/${folderName.trim().toLowerCase().replace(/\s+/g, "-")}`
+    : "";
   const [title, setTitle] = useState("");
   const [takenAt, setTakenAt] = useState("");
   const [location, setLocation] = useState("");
@@ -77,28 +123,48 @@ export function PhotoUploadForm() {
   // Additional tags from AI (merged in after upload)
   const [aiTags, setAiTags] = useState<string[]>([]);
 
+  // Existing folders and galleries fetched from R2 (for datalist + picker)
+  const [folders, setFolders] = useState<string[]>([]);
+  const [availableGalleries, setAvailableGalleries] = useState<
+    { id: string; name: string; type: string }[]
+  >([]);
+  const [extraGalleries, setExtraGalleries] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/admin/api/folders")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d.folders)) setFolders(d.folders); })
+      .catch(() => { /* non-critical, ignore */ });
+
+    fetch("/admin/api/galleries")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d.galleries)) setAvailableGalleries(d.galleries); })
+      .catch(() => { /* non-critical, ignore */ });
+  }, []);
+
   // UI state
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [resizeWarning, setResizeWarning] = useState(false);
   const [suggestingTags, setSuggestingTags] = useState(false);
   const [suggestError, setSuggestError] = useState("");
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setFile(f);
     setPreview(URL.createObjectURL(f));
     setUploadStatus("idle");
     setErrorMsg("");
     setSuccessMsg("");
+    setResizeWarning(false);
 
     // Auto-fill title from filename (strip extension)
     if (!title) {
       setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
     }
 
-    // Read EXIF/IPTC data (including keywords)
+    // Read EXIF/IPTC data from the original file before resize strips it
     try {
       const exifr = await import("exifr");
       const exif = await exifr.default.parse(f, {
@@ -134,6 +200,22 @@ export function PhotoUploadForm() {
     } catch {
       // exifr unavailable or failed — proceed without EXIF
     }
+
+    // Resize down to 3 MB if needed (canvas strips EXIF, so do this after reading it)
+    if (f.size > MAX_UPLOAD_BYTES) {
+      try {
+        const { file: resized, width: rw, height: rh } = await resizeToLimit(f);
+        setFile(resized);
+        setPreview(URL.createObjectURL(resized));
+        setWidth(String(rw));
+        setHeight(String(rh));
+        setResizeWarning(true);
+      } catch {
+        setFile(f);
+      }
+    } else {
+      setFile(f);
+    }
   }
 
   async function handleUpload() {
@@ -153,6 +235,7 @@ export function PhotoUploadForm() {
       if (lng) fd.append("lng", lng);
       if (width) fd.append("width", width);
       if (height) fd.append("height", height);
+      if (extraGalleries.length) fd.append("extraGalleries", extraGalleries.join(","));
 
       const res = await fetch("/admin/api/upload", { method: "POST", body: fd });
       const json = await res.json();
@@ -234,7 +317,8 @@ export function PhotoUploadForm() {
   function handleReset() {
     setFile(null);
     setPreview(null);
-    setFolder("");
+    setFolderType("places");
+    setFolderName("");
     setTitle("");
     setTakenAt("");
     setLocation("");
@@ -245,6 +329,8 @@ export function PhotoUploadForm() {
     setHeight("");
     setUploadStatus("idle");
     setErrorMsg("");
+    setResizeWarning(false);
+    setExtraGalleries([]);
     setSuggestError("");
     setExifTags([]);
     setAiTags([]);
@@ -298,6 +384,11 @@ export function PhotoUploadForm() {
               <p className="text-xs text-ink-muted mt-0.5">
                 {(file.size / 1024 / 1024).toFixed(1)} MB
               </p>
+              {resizeWarning && (
+                <p className="text-xs text-yellow-400 mt-1">
+                  ⚠ Resized for web performance (original exceeded 3 MB).
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -313,15 +404,90 @@ export function PhotoUploadForm() {
 
       {file && (
         <>
-          {/* ── Metadata fields ── */}
-          <Field
-            label="Destination folder"
-            name="folder"
-            value={folder}
-            onChange={setFolder}
-            placeholder="places/japan-2024"
-            hint='Optional. Determines the R2 path and auto-assigns a gallery. Use "places/…" or "themes/…".'
-          />
+          {/* ── Gallery ── */}
+          {(() => {
+            const slugSuggestions = folders
+              .filter((f) => f.startsWith(`${folderType}/`))
+              .map((f) => f.slice(folderType.length + 1));
+            const addable = availableGalleries.filter(
+              (g) => g.id !== folder && !extraGalleries.includes(g.id)
+            );
+            return (
+              <div className="space-y-2">
+                <label className="block text-sm text-ink-secondary">Gallery</label>
+
+                {/* Type + name picker */}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={folderType}
+                    onChange={(e) => setFolderType(e.target.value as "places" | "themes")}
+                    className="px-3 py-2 rounded-lg bg-surface-2 border border-border
+                               text-ink-primary text-sm focus:outline-none focus:ring-2
+                               focus:ring-accent"
+                  >
+                    <option value="places">places</option>
+                    <option value="themes">themes</option>
+                  </select>
+                  <span className="text-ink-muted text-sm select-none">/</span>
+                  <input
+                    type="text"
+                    value={folderName}
+                    onChange={(e) => setFolderName(e.target.value)}
+                    placeholder="japan-2024"
+                    list="gallery-name-suggestions"
+                    autoComplete="off"
+                    className="flex-1 px-3 py-2 rounded-lg bg-surface-2 border border-border
+                               text-ink-primary text-sm focus:outline-none focus:ring-2
+                               focus:ring-accent placeholder:text-ink-muted"
+                  />
+                  <datalist id="gallery-name-suggestions">
+                    {slugSuggestions.map((s) => <option key={s} value={s} />)}
+                  </datalist>
+                </div>
+
+                {/* Extra galleries added by the user */}
+                {extraGalleries.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {extraGalleries.map((id) => {
+                      const name = availableGalleries.find((g) => g.id === id)?.name ?? id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setExtraGalleries((prev) => prev.filter((g) => g !== id))}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full
+                                     text-xs bg-surface-2 border border-border text-ink-secondary
+                                     hover:border-red-400/60 hover:text-red-400 transition-colors"
+                        >
+                          {name}
+                          <X className="w-3 h-3" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Available galleries to also add the photo to */}
+                {addable.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-xs text-ink-muted">Also in:</span>
+                    {addable.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setExtraGalleries((prev) => [...prev, g.id])}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full
+                                   text-xs bg-surface-2 border border-border text-ink-muted
+                                   hover:border-accent hover:text-accent transition-colors"
+                      >
+                        + {g.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <Field
             label="Title"
