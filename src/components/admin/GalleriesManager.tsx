@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus, Pencil, Trash2, X, Check, Lock, Unlock, FolderOpen, Eye, EyeOff,
+  Plus, Pencil, Trash2, X, Check, Lock, Unlock, FolderOpen, Eye, EyeOff, Copy, CheckCheck, Link2,
 } from "lucide-react";
 import type { Gallery } from "@/lib/r2/types";
 import type { GalleryConfig } from "@/lib/r2/types";
@@ -23,6 +23,53 @@ function nameToSlug(name: string): string {
     .replace(/[\u0300-\u036f]/g, "") // strip accents
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+// ── Gallery share link ────────────────────────────────────────────────────────
+
+function GalleryShareLink({ gallery }: { gallery: Gallery }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== "undefined"
+    ? `${window.location.origin}/photography/${gallery.slug}`
+    : `/photography/${gallery.slug}`;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-3">
+      <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
+        <Link2 className="w-3.5 h-3.5" />
+        Gallery link
+      </p>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 text-xs text-ink-secondary font-mono truncate">
+          {url}
+        </code>
+        <button
+          type="button"
+          onClick={handleCopy}
+          title="Copy link"
+          className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs
+                      border transition-colors ${
+                        copied
+                          ? "border-green-500/40 bg-green-500/10 text-green-400"
+                          : "border-border bg-surface-2 text-ink-muted hover:text-ink-primary hover:border-accent"
+                      }`}
+        >
+          {copied ? (
+            <><CheckCheck className="w-3.5 h-3.5" /> Copied!</>
+          ) : (
+            <><Copy className="w-3.5 h-3.5" /> Copy</>
+          )}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ── Gallery form (shared by add and edit) ─────────────────────────────────────
@@ -199,6 +246,9 @@ function GalleryForm({ gallery, onSuccess, onCancel }: GalleryFormProps) {
           </div>
         </div>
       )}
+
+      {/* Share link — only shown when editing an existing gallery */}
+      {isEditing && <GalleryShareLink gallery={gallery} />}
 
       {/* Actions */}
       <div className="flex gap-2 pt-1">
