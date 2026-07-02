@@ -21,6 +21,7 @@ A personal portfolio with a photography gallery and GitHub projects feed. Built 
 
 ### Admin panel (`/admin`)
 - **Photos** — grid view, metadata editing (title, description, galleries, tags, EXIF), upload, replace, delete
+- **Galleries** — create and manage gallery config entries: rename, set description, toggle public/private, set password, copy share link
 - **Inbox** — contact form submissions with read/unread tracking
 - **Tags** — manage multilingual tag translations
 - Protected by a secret-based session cookie (`ADMIN_SECRET`)
@@ -107,6 +108,26 @@ Create `_data/photos.json` in your R2 bucket. Use `data/photos-example.json` as 
 
 A photo can belong to multiple galleries — add as many keys to `galleries` as needed.
 
+### 3b. (Optional) Gallery config in R2
+
+Gallery metadata overrides and private access control are stored in `_config/galleries.json` inside the R2 bucket. This file is created and managed entirely from `/admin/galleries` — no manual editing required.
+
+**What it controls per gallery:**
+
+| Field | Purpose |
+|---|---|
+| `name` | Override the auto-derived display name |
+| `description` | Override the auto-derived description |
+| `private` | `true` hides the gallery from `/photography` and requires a password |
+| `passwordHash` | SHA-256 hash of the access password (set via the admin UI) |
+
+**Private gallery flow:**
+1. Create a gallery entry in `/admin/galleries`, enable Private, set a password.
+2. Assign photos to that gallery via the photo editor (`galleries` field).
+3. Share the URL `/photography/<slug>` — visitors see a password prompt, not the photos.
+4. On correct password an `HttpOnly` cookie grants access for 7 days.
+5. The gallery never appears in the public `/photography` listing.
+
 ### 4. Run locally
 
 ```bash
@@ -146,6 +167,7 @@ src/
 │   │   ├── contact/            # Contact form
 │   │   └── admin/              # Admin panel (protected)
 │   │       ├── photos/         # Photo grid + edit + upload
+│   │       ├── galleries/      # Gallery config: rename, private access, share link
 │   │       ├── tags/           # Tag translation management
 │   │       └── inbox/          # Contact message inbox
 ├── actions/                    # Server Actions (votes, messages, cache)
@@ -155,7 +177,7 @@ src/
 │   └── photography/            # Gallery card, lightbox, slideshow, cast
 ├── hooks/                      # useLightbox, useVote, useCast, usePhotoTimer
 ├── lib/
-│   ├── r2/                     # R2 client, photo/vote/message data access
+│   ├── r2/                     # R2 client, photo/vote/message/gallery-config data access
 │   ├── github/                 # GitHub API client + App auth
 │   ├── otel/                   # OTel metrics and logger
 │   └── utils/                  # Gallery derivation, tag normalisation, cn()
