@@ -14,7 +14,10 @@
     "photographyTitle": "Fotografía",
     "photographyDescription": "Una galería de lugares, temáticas y mis fotos favoritas, almacenadas en Cloudflare R2.",
     "cvTitle": "CV",
-    "cvDescription": "Mi trayectoria profesional, experiencia y habilidades en LinkedIn."
+    "cvDescription": "Mi trayectoria profesional, experiencia y habilidades en LinkedIn.",
+    "subtitle": "Desarrollador de software con pasión por la fotografía",
+    "viewGallery": "Ver galería →",
+    "viewAllProjects": "Ver todos los proyectos →"
   },
   "GitHub": {
     "title": "Proyectos de GitHub",

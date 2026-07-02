@@ -29,6 +29,7 @@ Three navigation cards linking to the main sections:
 
 ### Admin panel (`/admin`)
 - **Photos** — grid view, metadata editing (title, description, galleries, tags, EXIF), upload, replace, delete
+- **Slideshow** — pick and order the photos shown in the home page slideshow; saved as `_config/slideshow.json` in R2; falls back to the Favourites gallery if not configured
 - **Galleries** — create and manage gallery config entries: rename, set description, toggle public/private, set password, copy share link
 - **Inbox** — contact form submissions with read/unread tracking
 - **Tags** — manage multilingual tag translations
@@ -175,6 +176,7 @@ src/
 │   │   ├── contact/            # Contact form
 │   │   └── admin/              # Admin panel (protected)
 │   │       ├── photos/         # Photo grid + edit + upload
+│   │       ├── slideshow/      # Home slideshow photo picker (saves _config/slideshow.json)
 │   │       ├── galleries/      # Gallery config: rename, private access, share link
 │   │       ├── tags/           # Tag translation management
 │   │       └── inbox/          # Contact message inbox

@@ -14,7 +14,10 @@
     "photographyTitle": "Argazkigintza",
     "photographyDescription": "Lekuetako, gaietako eta gogoko argazkien galeria bat, Cloudflare R2-n gordetuta.",
     "cvTitle": "CV",
-    "cvDescription": "Nire ibilbide profesionala, esperientzia eta gaitasunak LinkedIn-en."
+    "cvDescription": "Nire ibilbide profesionala, esperientzia eta gaitasunak LinkedIn-en.",
+    "subtitle": "Software garatzailea, argazkigintzarekiko pasioarekin",
+    "viewGallery": "Galeria ikusi →",
+    "viewAllProjects": "Proiektu guztiak ikusi →"
   },
   "GitHub": {
     "title": "GitHub Proiektuak",

@@ -1,95 +1,179 @@
-import Link from "next/link";
 import Image from "next/image";
-import { Github, Camera, FileText, ArrowRight, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { Github } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import * as Sentry from "@sentry/nextjs";
+import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
+import { getGalleryPhotos } from "@/lib/utils/galleries";
+import { getSlideshowConfig } from "@/lib/r2/slideshowConfig";
+import { fetchGitHubRepos } from "@/lib/github/repos";
+import { HomeSlideshow } from "@/components/home/HomeSlideshow";
+import type { GitHubRepo } from "@/lib/r2/types";
 
-const LINKEDIN_URL = "https://www.linkedin.com/in/benattxurruka/";
+export const revalidate = 3600;
+
+async function getTopRepos(): Promise<GitHubRepo[]> {
+  try {
+    const repos = await fetchGitHubRepos();
+    return repos.slice(0, 3);
+  } catch (err) {
+    Sentry.captureException(err);
+    return [];
+  }
+}
 
 export default async function HomePage() {
   const t = await getTranslations("Home");
 
-  const internalSections = [
-    {
-      href: "/github",
-      title: t("githubTitle"),
-      description: t("githubDescription"),
-      image: "/images/github-preview.svg",
-      imageAlt: "GitHub logo",
-      icon: Github,
-      ring: "ring-blue-500/30",
-    },
-    {
-      href: "/photography",
-      title: t("photographyTitle"),
-      description: t("photographyDescription"),
-      image: "/images/photography-preview.svg",
-      imageAlt: "Camera illustration",
-      icon: Camera,
-      ring: "ring-purple-500/30",
-    },
-  ];
+  const [photos, repos, slideshowKeys] = await Promise.all([
+    getPhotos().catch(() => []),
+    getTopRepos(),
+    getSlideshowConfig(),
+  ]);
+
+  // Slideshow: use admin-configured order if set, otherwise fall back to favourites
+  let slideshowPhotos: { url: string; title: string }[];
+  if (slideshowKeys && slideshowKeys.length > 0) {
+    const photoByKey = Object.fromEntries(photos.map((p) => [p.r2Key, p]));
+    slideshowPhotos = slideshowKeys
+      .map((key) => photoByKey[key])
+      .filter(Boolean)
+      .map((p) => ({ url: getPhotoUrl(p.r2Key), title: p.title }));
+  } else {
+    const favourites = getGalleryPhotos(photos, "favourites");
+    slideshowPhotos = (favourites.length > 0 ? favourites : photos)
+      .slice(0, 6)
+      .map((p) => ({ url: getPhotoUrl(p.r2Key), title: p.title }));
+  }
 
   return (
-    <div className="min-h-[calc(100vh-48px)] flex flex-col items-center justify-center p-8">
-      <div className="w-full max-w-2xl space-y-4">
-        <h1 className="text-3xl font-semibold text-ink-primary text-center mb-10">
-          {t("welcome")}
+    // Fill the space below the top bar exactly
+    <div className="h-[calc(100vh-48px)] flex flex-col relative overflow-hidden">
+
+      {/* ── Top half: Photography slideshow ──────────────────────────────── */}
+      <div className="flex-1 relative overflow-hidden bg-[#111] min-h-0">
+        <HomeSlideshow
+          slides={slideshowPhotos}
+          labelText={t("photographyTitle")}
+          linkText={t("viewGallery")}
+        />
+      </div>
+
+      {/* ── Bottom half: GitHub projects ──────────────────────────────────── */}
+      <div
+        className="flex-1 relative min-h-0 flex items-center justify-center"
+        style={{ background: "#262421" }}
+      >
+        <div className="w-full max-w-[640px] px-10 pt-[118px] pb-10">
+          {/* Section header */}
+          <div className="flex items-center gap-2.5 mb-4">
+            <Github className="w-[18px] h-[18px] text-[#f5f5f5]" />
+            <h2
+              className="text-[18px] text-[#f5f5f5] m-0"
+              style={{ fontFamily: "var(--font-playfair, Georgia, serif)", fontWeight: 600 }}
+            >
+              {t("githubTitle")}
+            </h2>
+          </div>
+
+          {/* Top 3 repos */}
+          {repos.length > 0 ? (
+            <div className="flex gap-2.5">
+              {repos.map((repo) => (
+                <a
+                  key={repo.id}
+                  href={repo.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 min-w-0 px-4 py-3.5 rounded-lg no-underline
+                             transition-colors hover:border-[#5a534c]"
+                  style={{
+                    background: "#1f1d1a",
+                    border: "1px solid #3a3733",
+                  }}
+                >
+                  <p
+                    className="text-[13px] text-[#ddd] truncate m-0"
+                    style={{ fontFamily: "monospace" }}
+                  >
+                    {repo.name}
+                  </p>
+                  {repo.description && (
+                    <p className="text-[11px] text-[#888] mt-1 m-0 line-clamp-2">
+                      {repo.description}
+                    </p>
+                  )}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="flex gap-2.5">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex-1 h-12 rounded-lg animate-pulse"
+                  style={{ background: "#2a2825" }}
+                />
+              ))}
+            </div>
+          )}
+
+          <Link
+            href="/github"
+            className="inline-block mt-3.5 text-[13px] font-semibold no-underline
+                       hover:underline"
+            style={{ color: "#d4a574" }}
+          >
+            {t("viewAllProjects")}
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Avatar + name, centered at the seam ──────────────────────────── */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                   z-10 flex flex-col items-center text-center pointer-events-none"
+      >
+        {/* Profile photo */}
+        <div
+          className="w-32 h-32 rounded-full overflow-hidden shrink-0"
+          style={{
+            border: "4px solid #1f1d1c",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+          }}
+        >
+          <Image
+            src="/images/profile.jpg"
+            alt="Beñat Txurruka"
+            width={128}
+            height={128}
+            className="object-cover w-full h-full"
+            priority
+          />
+        </div>
+
+        {/* Name */}
+        <h1
+          className="mt-4 mb-0 text-[40px] leading-[1.05] text-white"
+          style={{
+            fontFamily: "var(--font-playfair, Georgia, serif)",
+            fontWeight: 700,
+            textShadow: "0 2px 20px rgba(0,0,0,0.6)",
+          }}
+        >
+          Beñat Txurruka
         </h1>
 
-        {/* Internal navigation cards */}
-        {internalSections.map(({ href, title, description, image, imageAlt, icon: Icon, ring }) => (
-          <Link
-            key={href}
-            href={href}
-            className="card flex items-center gap-6 p-6 group"
-          >
-            <div className={`relative flex-shrink-0 w-16 h-16 rounded-full overflow-hidden ring-2 ${ring} bg-surface-3`}>
-              <Image src={image} alt={imageAlt} fill className="object-cover" sizes="64px" />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <Icon className="w-4 h-4 text-ink-muted flex-shrink-0" />
-                <h2 className="font-semibold text-ink-primary group-hover:text-accent transition-colors">
-                  {title}
-                </h2>
-              </div>
-              <p className="text-sm text-ink-secondary leading-relaxed">{description}</p>
-            </div>
-
-            <ArrowRight
-              className="w-5 h-5 text-ink-muted flex-shrink-0 opacity-0 group-hover:opacity-100
-                         -translate-x-1 group-hover:translate-x-0 transition-all duration-200"
-            />
-          </Link>
-        ))}
-
-        {/* CV — external link card */}
-        <a
-          href={LINKEDIN_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="card flex items-center gap-6 p-6 group"
+        {/* Subtitle */}
+        <p
+          className="mt-2 mb-0 text-[14px]"
+          style={{
+            color: "rgba(255,255,255,0.85)",
+            textShadow: "0 1px 10px rgba(0,0,0,0.6)",
+          }}
         >
-          <div className="relative flex-shrink-0 w-16 h-16 rounded-full overflow-hidden ring-2 ring-sky-500/30 bg-surface-3">
-            <Image src="/images/linkedin-preview.svg" alt="LinkedIn logo" fill className="object-cover" sizes="64px" />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-4 h-4 text-ink-muted flex-shrink-0" />
-              <h2 className="font-semibold text-ink-primary group-hover:text-accent transition-colors">
-                {t("cvTitle")}
-              </h2>
-            </div>
-            <p className="text-sm text-ink-secondary leading-relaxed">{t("cvDescription")}</p>
-          </div>
-
-          <ExternalLink
-            className="w-5 h-5 text-ink-muted flex-shrink-0 opacity-0 group-hover:opacity-100
-                       transition-all duration-200"
-          />
-        </a>
+          {t("subtitle")}
+        </p>
       </div>
     </div>
   );

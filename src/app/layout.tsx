@@ -2,7 +2,22 @@ import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
+import { Playfair_Display, Crimson_Text } from "next/font/google";
 import "./globals.css";
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-playfair",
+  display: "swap",
+});
+
+const crimson = Crimson_Text({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  variable: "--font-crimson",
+  display: "swap",
+});
 import { recordSessionLanguage } from "@/lib/otel/metrics";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -43,8 +58,10 @@ export default async function RootLayout({
   const themeCookie = cookieStore.get("THEME")?.value ?? "system";
   const initialClass = themeCookie === "dark" ? "dark" : themeCookie === "light" ? "" : "";
 
+  const fontVars = `${playfair.variable} ${crimson.variable}`;
+
   return (
-    <html lang={locale} className={initialClass} suppressHydrationWarning>
+    <html lang={locale} className={[initialClass, fontVars].filter(Boolean).join(" ")} suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>
