@@ -15,7 +15,13 @@ export const revalidate = 3600;
 async function getTopRepos(): Promise<GitHubRepo[]> {
   try {
     const repos = await fetchGitHubRepos();
-    return repos.slice(0, 3);
+    // Starred repos first, then by most recently updated
+    const sorted = [...repos].sort((a, b) => {
+      const aStarred = a.stargazers_count > 0 ? 1 : 0;
+      const bStarred = b.stargazers_count > 0 ? 1 : 0;
+      return bStarred - aStarred;
+    });
+    return sorted.slice(0, 3);
   } catch (err) {
     Sentry.captureException(err);
     return [];
