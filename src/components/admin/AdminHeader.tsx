@@ -4,7 +4,7 @@ import { adminLogout } from "@/actions/adminAuth";
 import { getCachedMessages } from "@/lib/r2/messages";
 
 interface Props {
-  activeTab: "photos" | "tags" | "upload" | "inbox";
+  activeTab: "photos" | "galleries" | "tags" | "upload" | "inbox";
 }
 
 export async function AdminHeader({ activeTab }: Props) {
@@ -36,6 +36,16 @@ export async function AdminHeader({ activeTab }: Props) {
             }`}
           >
             Photos
+          </Link>
+          <Link
+            href="/admin/galleries"
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              activeTab === "galleries"
+                ? "bg-surface-2 text-ink-primary font-medium"
+                : "text-ink-muted hover:text-ink-primary"
+            }`}
+          >
+            Galleries
           </Link>
           <Link
             href="/admin/tags"

@@ -56,7 +56,27 @@ export interface Gallery {
   type: GalleryType;
   coverPhoto?: Photo;
   photoCount: number;
+  /** True when this gallery requires a password to view */
+  isPrivate?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Gallery config types (stored in R2 at _config/galleries.json)
+// ---------------------------------------------------------------------------
+
+export interface GalleryConfigEntry {
+  /** Override display name */
+  name?: string;
+  /** Override description */
+  description?: string;
+  /** Whether the gallery is password-protected */
+  private?: boolean;
+  /** SHA-256 hex hash of the access password */
+  passwordHash?: string;
+}
+
+/** Map of gallery ID → config entry, e.g. { "places/japan-2024": { name: "Japan 2024" } } */
+export type GalleryConfig = Record<string, GalleryConfigEntry>;
 
 export interface GalleryWithPhotos extends Gallery {
   photos: Photo[];

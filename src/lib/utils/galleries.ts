@@ -1,4 +1,4 @@
-import type { Gallery, GalleryType, GalleryWithPhotos, Photo } from "../r2/types";
+import type { Gallery, GalleryConfig, GalleryType, GalleryWithPhotos, Photo } from "../r2/types";
 import { normalizeTag, getTagVariants, type TagConfig } from "./tagNormalization";
 
 /**
@@ -18,13 +18,22 @@ function prettifySlug(slug: string): string {
  *   "favourites"
  *   "places/{slug}"   e.g. "places/japan-2024"
  *   "themes/{slug}"   e.g. "themes/cityscape"
+ *
+ * If galleryConfig is provided:
+ *   - name/description overrides are applied per gallery ID
+ *   - galleries marked private: true get isPrivate = true
+ *   - config entries with no matching photos are included as empty galleries
  */
 interface DeriveGalleriesOptions {
   allPhotosName?: string;
   allPhotosDescription?: string;
 }
 
-export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions = {}): Gallery[] {
+export function deriveGalleries(
+  photos: Photo[],
+  options: DeriveGalleriesOptions = {},
+  galleryConfig?: GalleryConfig
+): Gallery[] {
   const map = new Map<string, { type: GalleryType; photos: Photo[] }>();
 
   for (const photo of photos) {
@@ -43,6 +52,22 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
     }
   }
 
+  // Also register config-only gallery keys (no photos yet) so they appear in admin
+  if (galleryConfig) {
+    for (const key of Object.keys(galleryConfig)) {
+      if (!map.has(key)) {
+        const type: GalleryType = key.startsWith("places/")
+          ? "places"
+          : key.startsWith("themes/")
+          ? "themes"
+          : key === "favourites"
+          ? "favourites"
+          : "places";
+        map.set(key, { type, photos: [] });
+      }
+    }
+  }
+
   const galleries: Gallery[] = [];
 
   /** Pick the designated cover photo for a gallery, falling back to the first photo. */
@@ -53,18 +78,41 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
     );
   }
 
+  /** Build a gallery object, merging any config overrides. */
+  function buildGallery(
+    key: string,
+    slug: string,
+    defaultName: string,
+    defaultDescription: string,
+    type: GalleryType,
+    photos: Photo[]
+  ): Gallery {
+    const cfg = galleryConfig?.[key];
+    return {
+      id: key,
+      slug,
+      name: cfg?.name ?? defaultName,
+      description: cfg?.description ?? defaultDescription,
+      type,
+      coverPhoto: pickCover(key, slug, photos),
+      photoCount: photos.length,
+      isPrivate: cfg?.private ?? false,
+    };
+  }
+
   // Always show Favourites first
   if (map.has("favourites")) {
     const entry = map.get("favourites")!;
-    galleries.push({
-      id: "favourites",
-      slug: "favourites",
-      name: "My Favourites",
-      description: "A curated selection of my best shots",
-      type: "favourites",
-      coverPhoto: pickCover("favourites", "favourites", entry.photos),
-      photoCount: entry.photos.length,
-    });
+    galleries.push(
+      buildGallery(
+        "favourites",
+        "favourites",
+        "My Favourites",
+        "A curated selection of my best shots",
+        "favourites",
+        entry.photos
+      )
+    );
     map.delete("favourites");
   }
 
@@ -76,23 +124,19 @@ export function deriveGalleries(photos: Photo[], options: DeriveGalleriesOptions
     const slug = parts[parts.length - 1];
     const name = prettifySlug(slug);
 
-    galleries.push({
-      id: key,
-      slug,
-      name,
-      description:
-        entry.type === "places"
-          ? `Photos from ${name}`
-          : `${name} photography`,
-      type: entry.type,
-      coverPhoto: pickCover(key, slug, entry.photos),
-      photoCount: entry.photos.length,
-    });
+    galleries.push(
+      buildGallery(
+        key,
+        slug,
+        name,
+        entry.type === "places" ? `Photos from ${name}` : `${name} photography`,
+        entry.type,
+        entry.photos
+      )
+    );
   }
 
   // ── "All Photos" gallery — always present ────────────────────────────────
-  // Shown regardless of whether other galleries exist, so visitors always have
-  // a single place to browse every photo in the collection.
   if (photos.length > 0) {
     galleries.push({
       id: "all",
@@ -175,12 +219,14 @@ export function getPhotosByTag(
 
 /**
  * Resolve a slug to a full Gallery object (with photos attached).
+ * Pass galleryConfig to apply name/description overrides and private flag.
  */
 export function resolveGallery(
   photos: Photo[],
-  slug: string
+  slug: string,
+  galleryConfig?: GalleryConfig
 ): GalleryWithPhotos | null {
-  const galleries = deriveGalleries(photos);
+  const galleries = deriveGalleries(photos, {}, galleryConfig);
   const gallery = galleries.find((g) => g.slug === slug);
   if (!gallery) return null;
 

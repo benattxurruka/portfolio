@@ -4,6 +4,7 @@ import { Camera, Tag } from "lucide-react";
 import { getTranslations, getLocale } from "next-intl/server";
 import { getPhotos } from "@/lib/r2/photos";
 import { getTagConfig } from "@/lib/r2/tagConfig";
+import { getGalleryConfig } from "@/lib/r2/galleryConfig";
 import { deriveGalleries, deriveTags } from "@/lib/utils/galleries";
 import { mergeTagConfig, getTagLabel } from "@/lib/utils/tagNormalization";
 import { GalleryGrid } from "@/components/photography/GalleryGrid";
@@ -19,19 +20,23 @@ export const revalidate = 300;
 export default async function PhotographyPage() {
   const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
   try { recordPageView("photography", country); } catch {}
-  const [photos, t, locale, r2TagConfig] = await Promise.all([
+  const [photos, t, locale, r2TagConfig, galleryConfig] = await Promise.all([
     getPhotos(),
     getTranslations("Photography"),
     getLocale(),
     getTagConfig(),
+    getGalleryConfig(),
   ]);
 
   const tagConfig = mergeTagConfig(r2TagConfig);
   const tags = deriveTags(photos, tagConfig);
-  const galleries = deriveGalleries(photos, {
-    allPhotosName: t("allPhotosName"),
-    allPhotosDescription: t("allPhotosDescription"),
-  });
+  const allGalleries = deriveGalleries(
+    photos,
+    { allPhotosName: t("allPhotosName"), allPhotosDescription: t("allPhotosDescription") },
+    galleryConfig
+  );
+  // Private galleries are not shown in the public listing
+  const galleries = allGalleries.filter((g) => !g.isPrivate);
   const favourites = galleries.filter((g) => g.type === "favourites");
   const places = galleries.filter((g) => g.type === "places");
   const themes = galleries.filter((g) => g.type === "themes");

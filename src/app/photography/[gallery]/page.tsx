@@ -3,12 +3,16 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Images } from "lucide-react";
 import { getTranslations, getLocale } from "next-intl/server";
+import { cookies } from "next/headers";
 import { getPhotos } from "@/lib/r2/photos";
 import { getVotes } from "@/lib/r2/votes";
 import { getTagConfig } from "@/lib/r2/tagConfig";
+import { getGalleryConfig } from "@/lib/r2/galleryConfig";
 import { resolveGallery } from "@/lib/utils/galleries";
 import { mergeTagConfig } from "@/lib/utils/tagNormalization";
 import { TagFilteredGallery } from "@/components/photography/TagFilteredGallery";
+import { PrivateGalleryGate } from "@/components/photography/PrivateGalleryGate";
+import { galleryCookieName } from "@/lib/r2/galleryConfig";
 import { headers } from "next/headers";
 import { recordPageView } from "@/lib/otel/metrics";
 
@@ -20,8 +24,10 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { gallery: slug } = await params;
-  const photos = await getPhotos();
-  const gallery = resolveGallery(photos, slug);
+  const [photos, galleryConfig] = await Promise.all([getPhotos(), getGalleryConfig()]);
+  const gallery = resolveGallery(photos, slug, galleryConfig);
+  // Don't reveal name/description for private galleries in meta
+  if (gallery?.isPrivate) return { title: "Private Gallery" };
   return {
     title: gallery?.name ?? "Gallery",
     description: gallery?.description,
@@ -33,16 +39,36 @@ export default async function GalleryPage({ params }: Props) {
   const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
   try { recordPageView(`gallery/${slug}`, country); } catch {}
 
-  const [photos, votes, t, locale, r2TagConfig] = await Promise.all([
+  const [photos, votes, t, locale, r2TagConfig, galleryConfig] = await Promise.all([
     getPhotos(),
     getVotes(),
     getTranslations("Gallery"),
     getLocale(),
     getTagConfig(),
+    getGalleryConfig(),
   ]);
 
-  const gallery = resolveGallery(photos, slug);
+  const gallery = resolveGallery(photos, slug, galleryConfig);
   if (!gallery) notFound();
+
+  // ── Private gallery access gate ─────────────────────────────────────────
+  if (gallery.isPrivate) {
+    const configEntry = galleryConfig[gallery.id];
+    const jar = await cookies();
+    const sessionCookie = jar.get(galleryCookieName(gallery.id))?.value;
+    const isUnlocked =
+      configEntry?.passwordHash && sessionCookie === configEntry.passwordHash;
+
+    if (!isUnlocked) {
+      return (
+        <PrivateGalleryGate
+          galleryId={gallery.id}
+          gallerySlug={slug}
+          galleryName={gallery.name}
+        />
+      );
+    }
+  }
 
   const tagConfig = mergeTagConfig(r2TagConfig);
 
