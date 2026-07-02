@@ -4,6 +4,14 @@ A personal portfolio with a photography gallery and GitHub projects feed. Built 
 
 ## Features
 
+### Home
+
+Three navigation cards linking to the main sections:
+
+- **GitHub projects** — internal link to `/github`
+- **Photography** — internal link to `/photography`
+- **LinkedIn / CV** — external link to the LinkedIn profile (URL hardcoded in `src/app/page.tsx`)
+
 ### Photography
 - **Galleries** organised by places, themes, and favourites
 - **Lightbox / slideshow** — full-screen viewer with auto-play, progress bar, photo counter
