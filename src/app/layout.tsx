@@ -20,9 +20,7 @@ const crimson = Crimson_Text({
 });
 import { recordSessionLanguage } from "@/lib/otel/metrics";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { MobileNav } from "@/components/layout/MobileNav";
-import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
-import { ThemeSwitcher } from "@/components/layout/ThemeSwitcher";
+import { TopBar } from "@/components/layout/TopBar";
 import { ThemeScript } from "@/components/layout/ThemeScript";
 
 export const metadata: Metadata = {
@@ -72,18 +70,7 @@ export default async function RootLayout({
             <Sidebar />
 
             <div className="flex-1 min-w-0 md:ml-[var(--sidebar-width)] flex flex-col">
-              {/* Top bar */}
-              <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5
-                              border-b border-border/50 bg-surface/80 backdrop-blur-sm">
-                {/* Hamburger — visible on mobile only; renders drawer via portal */}
-                <MobileNav />
-
-                {/* Right-hand controls — always visible */}
-                <div className="flex items-center gap-1">
-                  <ThemeSwitcher />
-                  <LanguageSwitcher />
-                </div>
-              </div>
+              <TopBar />
 
               <main className="flex-1">
                 {children}
