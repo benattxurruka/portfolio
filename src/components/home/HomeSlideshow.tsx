@@ -26,7 +26,7 @@ export function HomeSlideshow({ slides, labelText, linkText }: Props) {
 
   useEffect(() => {
     if (slides.length <= 1) return;
-    const id = setInterval(advance, 3500);
+    const id = setInterval(advance, 7000); // Advance photo every 7 seconds
     return () => clearInterval(id);
   }, [advance, slides.length]);
 
