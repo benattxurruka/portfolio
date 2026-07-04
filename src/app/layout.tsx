@@ -21,6 +21,7 @@ const crimson = Crimson_Text({
 import { recordSessionLanguage } from "@/lib/otel/metrics";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
+import { LayoutShell } from "@/components/layout/LayoutShell";
 import { ThemeScript } from "@/components/layout/ThemeScript";
 
 export const metadata: Metadata = {
@@ -69,13 +70,12 @@ export default async function RootLayout({
             {/* Desktop sidebar — hidden on mobile */}
             <Sidebar />
 
-            <div className="flex-1 min-w-0 md:ml-[var(--sidebar-width)] flex flex-col">
+            <LayoutShell>
               <TopBar />
-
               <main className="flex-1">
                 {children}
               </main>
-            </div>
+            </LayoutShell>
           </div>
         </NextIntlClientProvider>
       </body>

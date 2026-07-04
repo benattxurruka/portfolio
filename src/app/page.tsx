@@ -54,7 +54,13 @@ export default async function HomePage() {
 
   return (
     // Fill the space below the top bar exactly
-    <div className="h-[calc(100vh-48px)] flex flex-col relative overflow-hidden">
+    <div
+      className="h-[calc(100vh-48px)]"
+      style={{
+        background: "linear-gradient(to right, #141210 0%, #141210 calc(max(0px, (100% - 1600px) / 2) - 40px), #181614 calc(max(0px, (100% - 1600px) / 2)), #181614 calc(100% - max(0px, (100% - 1600px) / 2)), #141210 calc(100% - max(0px, (100% - 1600px) / 2) + 40px), #141210 100%)",
+      }}
+    >
+    <div className="h-full flex flex-col relative overflow-hidden md:max-w-[1600px] md:mx-auto md:w-full">
 
       {/* ── Top half: Photography slideshow ──────────────────────────────── */}
       <div className="flex-1 relative overflow-hidden bg-[#111] min-h-0">
@@ -181,6 +187,7 @@ export default async function HomePage() {
           {t("subtitle")}
         </p>
       </div>
+    </div>
     </div>
   );
 }

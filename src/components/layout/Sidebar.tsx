@@ -37,6 +37,8 @@ export function Sidebar() {
     },
   ];
 
+  if (pathname === "/") return null;
+
   return (
     <aside
       className="fixed left-0 top-0 h-full bg-surface-1 border-r border-border hidden md:flex flex-col z-10"
