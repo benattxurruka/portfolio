@@ -63,7 +63,7 @@ export default async function HomePage() {
     <div className="h-full flex flex-col relative overflow-hidden md:max-w-[1600px] md:mx-auto md:w-full">
 
       {/* ── Top half: Photography slideshow ──────────────────────────────── */}
-      <div className="flex-1 relative overflow-hidden bg-[#111] min-h-0">
+      <div className="flex-1 md:[flex-grow:1.2] relative overflow-hidden bg-[#111] min-h-0">
         <HomeSlideshow
           slides={slideshowPhotos}
           labelText={t("photographyTitle")}
@@ -73,10 +73,10 @@ export default async function HomePage() {
 
       {/* ── Bottom half: GitHub projects ──────────────────────────────────── */}
       <div
-        className="flex-1 relative min-h-0 flex items-center justify-center"
+        className="flex-1 md:[flex-grow:0.8] relative min-h-0 flex items-center justify-center"
         style={{ background: "#262421" }}
       >
-        <div className="w-full max-w-[640px] px-10 pt-[118px] pb-10">
+        <div className="w-full max-w-[640px] px-10 pt-[148px] md:pt-[118px] pb-10">
           {/* Section header */}
           <div className="flex items-center gap-2.5 mb-4">
             <Github className="w-[18px] h-[18px] text-[#f5f5f5]" />
@@ -143,7 +143,7 @@ export default async function HomePage() {
 
       {/* ── Avatar + name, centered at the seam ──────────────────────────── */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+        className="absolute top-1/2 md:top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2
                    z-10 flex flex-col items-center text-center pointer-events-none"
       >
         {/* Profile photo */}
