@@ -15,8 +15,6 @@ export const metadata: Metadata = {
   title: "Photography Gallery",
 };
 
-export const revalidate = 300;
-
 export default async function PhotographyPage() {
   const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
   try { recordPageView("photography", country); } catch {}

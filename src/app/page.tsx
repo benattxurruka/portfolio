@@ -9,8 +9,8 @@ import { getSlideshowConfig } from "@/lib/r2/slideshowConfig";
 import { fetchGitHubRepos } from "@/lib/github/repos";
 import { HomeSlideshow } from "@/components/home/HomeSlideshow";
 import type { GitHubRepo } from "@/lib/r2/types";
-
-export const revalidate = 3600;
+import { headers } from "next/headers";
+import { recordPageView } from "@/lib/otel/metrics";
 
 async function getTopRepos(): Promise<GitHubRepo[]> {
   try {
@@ -29,6 +29,8 @@ async function getTopRepos(): Promise<GitHubRepo[]> {
 }
 
 export default async function HomePage() {
+  const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
+  try { recordPageView("home", country); } catch {}
   const t = await getTranslations("Home");
 
   const [photos, repos, slideshowKeys] = await Promise.all([

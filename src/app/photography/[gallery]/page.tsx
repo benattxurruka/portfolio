@@ -16,8 +16,6 @@ import { galleryCookieName } from "@/lib/r2/galleryConfig";
 import { headers } from "next/headers";
 import { recordPageView } from "@/lib/otel/metrics";
 
-export const revalidate = 300;
-
 interface Props {
   params: Promise<{ gallery: string }>;
 }
