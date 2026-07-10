@@ -83,29 +83,15 @@
       "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
       "targets": [
         {
-          "expr": "sum by (country) (portfolio_page_views_total{country!=\"\"})",
+          "expr": "sum by (country) (last_over_time(portfolio_page_views_total{country!=\"\"}[$__range]))",
           "instant": true,
           "format": "table",
           "refId": "A"
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "min": 0,
-          "color": { "mode": "continuous-GrYlRd" },
-          "custom": {}
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Time" },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": { "viz": true, "legend": true, "tooltip": true }
-              }
-            ]
-          }
-        ]
+        "defaults": {},
+        "overrides": []
       },
       "options": {
         "view": { "id": "zero", "lat": 30, "lon": 0, "zoom": 1 },
@@ -122,12 +108,10 @@
             "name": "Page Views",
             "config": {
               "style": {
-                "color": { "field": "Value", "fixed": "red" },
+                "color": { "fixed": "red" },
                 "opacity": 0.8,
-                "size": { "field": "Value", "fixed": 10, "max": 30, "min": 6 },
-                "symbol": { "fixed": "img/icons/marker/circle.svg", "mode": "fixed" }
-              },
-              "showLegend": true
+                "size": { "field": "Value", "fixed": 10, "min": 8, "max": 30 }
+              }
             },
             "location": {
               "mode": "lookup",
