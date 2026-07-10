@@ -30,7 +30,6 @@ async function getTopRepos(): Promise<GitHubRepo[]> {
 
 export default async function HomePage() {
   const country = (await headers()).get("x-vercel-ip-country") ?? undefined;
-  console.log("[metrics] x-vercel-ip-country:", country ?? "(null)");
   try { recordPageView("home", country); } catch {}
   const t = await getTranslations("Home");
 

@@ -112,12 +112,30 @@
       "datasource": { "type": "prometheus", "uid": "${prometheus_ds_uid}" },
       "targets": [
         {
-          "expr": "sum by (country) (increase(portfolio_page_views_total[$__range]))",
+          "expr": "sum by (country) (portfolio_page_views_total)",
           "instant": true,
           "format": "table",
           "refId": "A"
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "color": { "mode": "continuous-GrYlRd" },
+          "custom": {}
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": { "viz": true, "legend": true, "tooltip": true }
+              }
+            ]
+          }
+        ]
+      },
       "options": {
         "view": { "id": "zero", "lat": 30, "lon": 0, "zoom": 1 },
         "controls": {
