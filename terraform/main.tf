@@ -2,9 +2,11 @@
 # Datasource name locals (Grafana Cloud naming: grafanacloud-{slug}-{type})
 # ---------------------------------------------------------------------------
 locals {
-  prometheus_ds_name = "grafanacloud-${var.grafana_cloud_stack_slug}-prom"
-  loki_ds_name       = "grafanacloud-${var.grafana_cloud_stack_slug}-logs"
-  tempo_ds_name      = "grafanacloud-${var.grafana_cloud_stack_slug}-traces"
+  # Extract slug from "https://{slug}.grafana.net" — already available via grafana_url
+  _stack_slug        = regex("https://([^.]+)\\.grafana\\.net", var.grafana_url)[0]
+  prometheus_ds_name = "grafanacloud-${local._stack_slug}-prom"
+  loki_ds_name       = "grafanacloud-${local._stack_slug}-logs"
+  tempo_ds_name      = "grafanacloud-${local._stack_slug}-traces"
 }
 
 # ---------------------------------------------------------------------------

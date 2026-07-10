@@ -24,11 +24,6 @@ variable "tempo_datasource_uid" {
   type        = string
 }
 
-variable "grafana_cloud_stack_slug" {
-  description = "Grafana Cloud stack slug (e.g. 'benattxurruka'). Used to derive datasource names: grafanacloud-{slug}-prom/logs/traces"
-  type        = string
-}
-
 variable "dashboard_folder" {
   description = "Grafana folder name for portfolio dashboards"
   type        = string
