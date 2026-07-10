@@ -601,7 +601,7 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "sum by (country) (portfolio_page_views_total)",
+                      "expr": "sum by (country) (portfolio_page_views_total{country!=\"\"})",
                       "format": "table",
                       "instant": true
                     },
@@ -686,9 +686,23 @@
                 {
                   "config": {
                     "style": {
-                      "colorScale": "linear",
-                      "palette": "interpolateYlOrRd"
-                    }
+                      "color": {
+                        "field": "Value",
+                        "fixed": "red"
+                      },
+                      "opacity": 0.8,
+                      "size": {
+                        "field": "Value",
+                        "fixed": 10,
+                        "max": 30,
+                        "min": 6
+                      },
+                      "symbol": {
+                        "fixed": "img/icons/marker/circle.svg",
+                        "mode": "fixed"
+                      }
+                    },
+                    "showLegend": true
                   },
                   "location": {
                     "gazetteer": "public/gazetteer/countries.json",
@@ -697,7 +711,7 @@
                   },
                   "name": "Page Views",
                   "tooltip": true,
-                  "type": "choropleth"
+                  "type": "markers"
                 }
               ],
               "tooltip": {
