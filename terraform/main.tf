@@ -1,4 +1,13 @@
 # ---------------------------------------------------------------------------
+# Datasource name locals (Grafana Cloud naming: grafanacloud-{slug}-{type})
+# ---------------------------------------------------------------------------
+locals {
+  prometheus_ds_name = "grafanacloud-${var.grafana_cloud_stack_slug}-prom"
+  loki_ds_name       = "grafanacloud-${var.grafana_cloud_stack_slug}-logs"
+  tempo_ds_name      = "grafanacloud-${var.grafana_cloud_stack_slug}-traces"
+}
+
+# ---------------------------------------------------------------------------
 # Grafana folder
 # ---------------------------------------------------------------------------
 resource "grafana_folder" "portfolio" {
@@ -17,14 +26,16 @@ resource "grafana_dashboard" "photo_metrics" {
 }
 
 # ---------------------------------------------------------------------------
-# App overview dashboard
+# App overview dashboard (V2 format)
 # ---------------------------------------------------------------------------
-resource "grafana_dashboard" "app_overview" {
-  folder = grafana_folder.portfolio.uid
-  config_json = templatefile("${path.module}/dashboards/app_overview.json", {
-    prometheus_ds_uid = var.prometheus_datasource_uid
-    loki_ds_uid       = var.loki_datasource_uid
-    tempo_ds_uid      = var.tempo_datasource_uid
+resource "grafana_apps_dashboard_dashboard_v2" "app_overview" {
+  folder_uid       = grafana_folder.portfolio.uid
+  allow_ui_updates = false
+  overwrite        = true
+  json = templatefile("${path.module}/dashboards/app_overview.json", {
+    prometheus_ds_name = local.prometheus_ds_name
+    loki_ds_name       = local.loki_ds_name
+    tempo_ds_name      = local.tempo_ds_name
   })
 }
 
