@@ -5,5 +5,5 @@ output "photo_metrics_dashboard_url" {
 
 output "app_overview_dashboard_url" {
   description = "URL of the app overview Grafana dashboard"
-  value       = "${var.grafana_url}/dashboards"
+  value       = grafana_apps_dashboard_dashboard_v2.app_overview.metadata.url
 }

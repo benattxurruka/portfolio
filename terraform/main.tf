@@ -29,14 +29,21 @@ resource "grafana_dashboard" "photo_metrics" {
 # App overview dashboard (V2 format)
 # ---------------------------------------------------------------------------
 resource "grafana_apps_dashboard_dashboard_v2" "app_overview" {
-  folder_uid       = grafana_folder.portfolio.uid
-  allow_ui_updates = false
-  overwrite        = true
-  json = templatefile("${path.module}/dashboards/app_overview.json", {
-    prometheus_ds_name = local.prometheus_ds_name
-    loki_ds_name       = local.loki_ds_name
-    tempo_ds_name      = local.tempo_ds_name
-  })
+  metadata {
+    uid        = "portfolio-app-overview"
+    folder_uid = grafana_folder.portfolio.uid
+  }
+  spec {
+    json = templatefile("${path.module}/dashboards/app_overview.json", {
+      prometheus_ds_name = local.prometheus_ds_name
+      loki_ds_name       = local.loki_ds_name
+      tempo_ds_name      = local.tempo_ds_name
+    })
+  }
+  options {
+    allow_ui_updates = false
+    overwrite        = true
+  }
 }
 
 # ---------------------------------------------------------------------------
