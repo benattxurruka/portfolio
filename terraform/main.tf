@@ -1,15 +1,4 @@
 # ---------------------------------------------------------------------------
-# Datasource name locals (Grafana Cloud naming: grafanacloud-{slug}-{type})
-# ---------------------------------------------------------------------------
-locals {
-  # Extract slug from "https://{slug}.grafana.net" — already available via grafana_url
-  _stack_slug        = regex("https://([^.]+)\\.grafana\\.net", var.grafana_url)[0]
-  prometheus_ds_name = "grafanacloud-${local._stack_slug}-prom"
-  loki_ds_name       = "grafanacloud-${local._stack_slug}-logs"
-  tempo_ds_name      = "grafanacloud-${local._stack_slug}-traces"
-}
-
-# ---------------------------------------------------------------------------
 # Grafana folder
 # ---------------------------------------------------------------------------
 resource "grafana_folder" "portfolio" {
@@ -28,24 +17,15 @@ resource "grafana_dashboard" "photo_metrics" {
 }
 
 # ---------------------------------------------------------------------------
-# App overview dashboard (V2 format)
+# App overview dashboard
 # ---------------------------------------------------------------------------
-resource "grafana_apps_dashboard_dashboard_v2" "app_overview" {
-  metadata {
-    uid        = "portfolio-app-overview"
-    folder_uid = grafana_folder.portfolio.uid
-  }
-  spec {
-    json = templatefile("${path.module}/dashboards/app_overview.json", {
-      prometheus_ds_name = local.prometheus_ds_name
-      loki_ds_name       = local.loki_ds_name
-      tempo_ds_name      = local.tempo_ds_name
-    })
-  }
-  options {
-    allow_ui_updates = false
-    overwrite        = true
-  }
+resource "grafana_dashboard" "app_overview" {
+  folder = grafana_folder.portfolio.uid
+  config_json = templatefile("${path.module}/dashboards/app_overview.json", {
+    prometheus_ds_uid = var.prometheus_datasource_uid
+    loki_ds_uid       = var.loki_datasource_uid
+    tempo_ds_uid      = var.tempo_datasource_uid
+  })
 }
 
 # ---------------------------------------------------------------------------
