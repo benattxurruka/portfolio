@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { Photo } from "@/lib/r2/types";
 
 /** Milliseconds between auto-advances in slideshow mode. */
@@ -34,7 +34,21 @@ export function useLightbox(photos: Photo[]) {
 
   // Keep ?photo=<id> in the URL in sync with the open photo.
   // replaceState avoids polluting browser history on every next/prev.
+  // On the very first run, try to hydrate currentIndex from the URL first —
+  // otherwise this effect would delete ?photo=<id> before the mount-time
+  // read below ever got a chance to see it (currentIndex starts as null).
+  const hydratedFromUrl = useRef(false);
   useEffect(() => {
+    if (!hydratedFromUrl.current) {
+      hydratedFromUrl.current = true;
+      const id = new URLSearchParams(window.location.search).get("photo");
+      const index = id ? photos.findIndex((p) => p.id === id) : -1;
+      if (index !== -1) {
+        setCurrentIndex(index);
+        return;
+      }
+    }
+
     const url = new URL(window.location.href);
     if (currentIndex === null) {
       if (url.searchParams.has("photo")) {
@@ -49,14 +63,6 @@ export function useLightbox(photos: Photo[]) {
       history.replaceState(null, "", url.toString());
     }
   }, [currentIndex, photos]);
-
-  // On mount: if the URL contains ?photo=<id>, open that photo directly.
-  useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("photo");
-    if (!id) return;
-    const index = photos.findIndex((p) => p.id === id);
-    if (index !== -1) setCurrentIndex(index);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePlay = useCallback(() => setIsPlaying((v) => !v), []);
 
