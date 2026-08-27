@@ -14,7 +14,7 @@ export default async function AdminSlideshowPage() {
 
   const photoItems = photos.map((p) => ({
     r2Key: p.r2Key,
-    url: getPhotoUrl(p.r2Key),
+    url: getPhotoUrl(p.r2Key, p.updatedAt),
     title: p.title,
   }));
 

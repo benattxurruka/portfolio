@@ -34,6 +34,12 @@ export interface Photo {
   lng?: number;
   width?: number;
   height?: number;
+  /**
+   * R2 object's LastModified timestamp (ISO string), used to cache-bust the
+   * public image URL so a replaced photo doesn't keep serving stale bytes
+   * from the browser/CDN/next-image caches.
+   */
+  updatedAt?: string;
 }
 
 export interface VoteMap {

@@ -80,7 +80,7 @@ export default async function AdminPhotoEditPage({ params }: Props) {
       <div className="flex gap-6 mb-8">
         <div className="relative w-32 h-32 rounded-lg overflow-hidden shrink-0 bg-surface-2">
           <Image
-            src={getPhotoUrl(photo.r2Key)}
+            src={getPhotoUrl(photo.r2Key, photo.updatedAt)}
             alt={photo.title}
             fill
             draggable={false}

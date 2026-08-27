@@ -155,6 +155,7 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
         lng: m["lng"] ? parseFloat(m["lng"]) : undefined,
         width:  m["width"]  ? parseInt(m["width"],  10) : undefined,
         height: m["height"] ? parseInt(m["height"], 10) : undefined,
+        updatedAt: head.LastModified?.toISOString(),
       };
     })
   );
@@ -188,13 +189,19 @@ export const getPhotos = unstable_cache(fetchPhotosFromR2, ["r2-photos"], {
 
 /**
  * Build the public URL for a photo from the R2_PUBLIC_URL env variable.
+ *
+ * `updatedAt` (the R2 object's LastModified timestamp) is appended as a
+ * `?v=` cache-busting query param when available. Replacing a photo's bytes
+ * keeps the same r2Key, so without this the browser/CDN/next-image caches
+ * would keep serving the old image at the unchanged URL.
  */
-export function getPhotoUrl(r2Key: string): string {
+export function getPhotoUrl(r2Key: string, updatedAt?: string): string {
   // NEXT_PUBLIC_R2_PUBLIC_URL is available on both server and client.
   // R2_PUBLIC_URL is server-only fallback (no NEXT_PUBLIC_ prefix = not sent to browser).
   const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? process.env.R2_PUBLIC_URL ?? "";
   // Encode each path segment so filenames with spaces or special characters
   // produce a valid URL (e.g. "Irati2  21x30.jpg" → "Irati2%2021x30.jpg").
   const encoded = r2Key.split("/").map(encodeURIComponent).join("/");
-  return `${base}/${encoded}`;
+  const url = `${base}/${encoded}`;
+  return updatedAt ? `${url}?v=${encodeURIComponent(updatedAt)}` : url;
 }

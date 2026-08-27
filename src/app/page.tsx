@@ -46,12 +46,12 @@ export default async function HomePage() {
     slideshowPhotos = slideshowKeys
       .map((key) => photoByKey[key])
       .filter(Boolean)
-      .map((p) => ({ url: getPhotoUrl(p.r2Key), title: p.title }));
+      .map((p) => ({ url: getPhotoUrl(p.r2Key, p.updatedAt), title: p.title }));
   } else {
     const favourites = getGalleryPhotos(photos, "favourites");
     slideshowPhotos = (favourites.length > 0 ? favourites : photos)
       .slice(0, 6)
-      .map((p) => ({ url: getPhotoUrl(p.r2Key), title: p.title }));
+      .map((p) => ({ url: getPhotoUrl(p.r2Key, p.updatedAt), title: p.title }));
   }
 
   return (

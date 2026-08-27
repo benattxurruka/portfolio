@@ -35,7 +35,7 @@ export default async function AdminPhotosPage() {
                        hover:ring-2 hover:ring-accent/60 transition-all"
           >
             <Image
-              src={getPhotoUrl(photo.r2Key)}
+              src={getPhotoUrl(photo.r2Key, photo.updatedAt)}
               alt={photo.title}
               fill
               draggable={false}

@@ -14,7 +14,7 @@ interface Props {
 export async function GalleryCard({ gallery, featured = false }: Props) {
   const t = await getTranslations("GalleryCard");
   const coverUrl = gallery.coverPhoto
-    ? getPhotoUrl(gallery.coverPhoto.r2Key)
+    ? getPhotoUrl(gallery.coverPhoto.r2Key, gallery.coverPhoto.updatedAt)
     : null;
 
   return (

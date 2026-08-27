@@ -143,7 +143,7 @@ export function Lightbox({
 
   const { isAvailable: castAvailable, isCasting, startCast, stopCast, castMedia } = useCast();
 
-  const photoUrl = getPhotoUrl(currentPhoto.r2Key);
+  const photoUrl = getPhotoUrl(currentPhoto.r2Key, currentPhoto.updatedAt);
   const initialVoteCount = votes[currentPhoto.id] ?? 0;
 
   // Keep the Cast receiver in sync as the user browses photos

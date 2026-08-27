@@ -26,7 +26,7 @@ export function PhotoGrid({ photos, onPhotoClick }: Props) {
           aria-label={`View photo: ${photo.title}`}
         >
           <Image
-            src={getPhotoUrl(photo.r2Key)}
+            src={getPhotoUrl(photo.r2Key, photo.updatedAt)}
             alt={photo.title}
             fill
             draggable={false}
