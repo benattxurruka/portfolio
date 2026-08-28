@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { revalidateTag } from "next/cache";
 import { BUCKET, getR2Client } from "@/lib/r2/client";
+import { deleteVariants } from "@/lib/r2/variants";
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as { r2Key?: string };
@@ -13,6 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const client = getR2Client();
     await client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: r2Key }));
+    await deleteVariants(client, BUCKET, r2Key);
     revalidateTag("r2-photos");
     return NextResponse.json({ ok: true });
   } catch (err) {

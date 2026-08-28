@@ -1,19 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useCallback } from "react";
-import Image from "next/image";
 import { Check, X, ArrowUp, ArrowDown, GripVertical, Save, Clapperboard } from "lucide-react";
 import { updateSlideshow } from "@/actions/slideshowConfig";
 import type { SlideshowActionState } from "@/actions/slideshowConfig";
-
-interface PhotoItem {
-  r2Key: string;
-  url: string;
-  title: string;
-}
+import type { Photo } from "@/lib/r2/types";
+import { R2Image } from "@/components/photography/R2Image";
 
 interface Props {
-  photos: PhotoItem[];
+  photos: Photo[];
   /** r2Keys currently saved as slideshow, in order. null = not configured (fallback). */
   savedKeys: string[] | null;
 }
@@ -134,10 +129,9 @@ export function SlideshowPicker({ photos, savedKeys }: Props) {
                   className="relative group rounded-lg overflow-hidden bg-surface-2"
                   style={{ width: 96, height: 96 }}
                 >
-                  <Image
-                    src={photo.url}
+                  <R2Image
+                    photo={photo}
                     alt={photo.title}
-                    fill
                     className="object-cover"
                     sizes="96px"
                   />
@@ -210,10 +204,9 @@ export function SlideshowPicker({ photos, savedKeys }: Props) {
                                 : "hover:ring-2 hover:ring-border ring-offset-1 ring-offset-surface"
                             }`}
               >
-                <Image
-                  src={photo.url}
+                <R2Image
+                  photo={photo}
                   alt={photo.title}
-                  fill
                   className="object-cover"
                   sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 12vw"
                   loading="lazy"

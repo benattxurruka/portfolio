@@ -9,6 +9,8 @@ import type { Photo } from "./types";
 
 const PHOTOS_PREFIX = "";
 const IMAGE_RE = /\.(jpe?g|png|webp|avif|gif)$/i;
+/** Reserved prefix for pre-generated resized derivatives — never treated as a photo. */
+const VARIANTS_PREFIX = "_variants/";
 
 /**
  * Derive a gallery key from the folder structure of an R2 object key.
@@ -89,7 +91,9 @@ async function fetchPhotosFromR2(): Promise<Photo[]> {
         })
       );
 
-      const pageKeys = (res.Contents ?? []).filter((o) => o.Key && IMAGE_RE.test(o.Key)).map((o) => o.Key!);
+      const pageKeys = (res.Contents ?? [])
+        .filter((o) => o.Key && IMAGE_RE.test(o.Key) && !o.Key.startsWith(VARIANTS_PREFIX))
+        .map((o) => o.Key!);
       keys.push(...pageKeys);
 
       logger.info("[r2] ListObjectsV2 response", {
@@ -187,21 +191,77 @@ export const getPhotos = unstable_cache(fetchPhotosFromR2, ["r2-photos"], {
   tags: ["r2-photos"],
 });
 
+function r2PublicBase(): string {
+  // NEXT_PUBLIC_R2_PUBLIC_URL is available on both server and client.
+  // R2_PUBLIC_URL is server-only fallback (no NEXT_PUBLIC_ prefix = not sent to browser).
+  return process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? process.env.R2_PUBLIC_URL ?? "";
+}
+
+function withVersion(url: string, updatedAt?: string): string {
+  return updatedAt ? `${url}?v=${encodeURIComponent(updatedAt)}` : url;
+}
+
 /**
- * Build the public URL for a photo from the R2_PUBLIC_URL env variable.
+ * Build the public URL for a photo's original file from the R2_PUBLIC_URL
+ * env variable.
  *
  * `updatedAt` (the R2 object's LastModified timestamp) is appended as a
  * `?v=` cache-busting query param when available. Replacing a photo's bytes
- * keeps the same r2Key, so without this the browser/CDN/next-image caches
- * would keep serving the old image at the unchanged URL.
+ * keeps the same r2Key, so without this the browser/CDN caches would keep
+ * serving the old image at the unchanged URL.
  */
 export function getPhotoUrl(r2Key: string, updatedAt?: string): string {
-  // NEXT_PUBLIC_R2_PUBLIC_URL is available on both server and client.
-  // R2_PUBLIC_URL is server-only fallback (no NEXT_PUBLIC_ prefix = not sent to browser).
-  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? process.env.R2_PUBLIC_URL ?? "";
   // Encode each path segment so filenames with spaces or special characters
   // produce a valid URL (e.g. "Irati2  21x30.jpg" → "Irati2%2021x30.jpg").
   const encoded = r2Key.split("/").map(encodeURIComponent).join("/");
-  const url = `${base}/${encoded}`;
-  return updatedAt ? `${url}?v=${encodeURIComponent(updatedAt)}` : url;
+  return withVersion(`${r2PublicBase()}/${encoded}`, updatedAt);
+}
+
+/**
+ * Pixel widths at which resized WebP derivatives are pre-generated and
+ * stored in R2 under `_variants/<r2Key>/<width>.webp` (see
+ * `src/lib/r2/variants.ts`, used by the upload/replace API routes). Keep
+ * this list in sync with the one used at generation time — it's re-exported
+ * from there so both sides read the same source of truth.
+ */
+export const VARIANT_WIDTHS = [480, 800, 1200, 1920, 2560] as const;
+
+/**
+ * The set of widths actually generated for a photo of a given original
+ * pixel width — each breakpoint is capped so we never upscale beyond the
+ * source image, and the result is deduped (small originals collapse to a
+ * single entry).
+ */
+export function getAvailableVariantWidths(originalWidth: number | undefined): number[] {
+  if (!originalWidth) {
+    // No width metadata (shouldn't happen for photos processed by the
+    // upload/replace routes) — fall back to the smallest variant, the one
+    // most likely to exist.
+    return [VARIANT_WIDTHS[0]];
+  }
+  const widths = VARIANT_WIDTHS.map((w) => Math.min(w, originalWidth));
+  return Array.from(new Set(widths)).sort((a, b) => a - b);
+}
+
+function variantUrl(r2Key: string, width: number, updatedAt?: string): string {
+  const encoded = `_variants/${r2Key}/${width}.webp`.split("/").map(encodeURIComponent).join("/");
+  return withVersion(`${r2PublicBase()}/${encoded}`, updatedAt);
+}
+
+/**
+ * Build a `src` + `srcSet` pair for a photo from its pre-generated WebP
+ * derivatives, for use with a plain `<img>` (see `R2Image`). This avoids
+ * routing photo requests through Vercel's paid Image Optimization API —
+ * derivatives are generated once at upload/replace time and served as-is.
+ */
+export function getPhotoSrcSet(photo: Pick<Photo, "r2Key" | "updatedAt" | "width">): {
+  src: string;
+  srcSet: string;
+} {
+  const widths = getAvailableVariantWidths(photo.width);
+  const srcSet = widths
+    .map((w) => `${variantUrl(photo.r2Key, w, photo.updatedAt)} ${w}w`)
+    .join(", ");
+  const largest = widths[widths.length - 1];
+  return { src: variantUrl(photo.r2Key, largest, photo.updatedAt), srcSet };
 }

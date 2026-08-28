@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Github } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import * as Sentry from "@sentry/nextjs";
-import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
+import { getPhotos } from "@/lib/r2/photos";
 import { getGalleryPhotos } from "@/lib/utils/galleries";
 import { getSlideshowConfig } from "@/lib/r2/slideshowConfig";
 import { fetchGitHubRepos } from "@/lib/github/repos";
@@ -40,18 +40,18 @@ export default async function HomePage() {
   ]);
 
   // Slideshow: use admin-configured order if set, otherwise fall back to favourites
-  let slideshowPhotos: { url: string; title: string }[];
+  let slideshowPhotos: { photo: typeof photos[number]; title: string }[];
   if (slideshowKeys && slideshowKeys.length > 0) {
     const photoByKey = Object.fromEntries(photos.map((p) => [p.r2Key, p]));
     slideshowPhotos = slideshowKeys
       .map((key) => photoByKey[key])
       .filter(Boolean)
-      .map((p) => ({ url: getPhotoUrl(p.r2Key, p.updatedAt), title: p.title }));
+      .map((p) => ({ photo: p, title: p.title }));
   } else {
     const favourites = getGalleryPhotos(photos, "favourites");
     slideshowPhotos = (favourites.length > 0 ? favourites : photos)
       .slice(0, 6)
-      .map((p) => ({ url: getPhotoUrl(p.r2Key, p.updatedAt), title: p.title }));
+      .map((p) => ({ photo: p, title: p.title }));
   }
 
   return (

@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import type { Photo } from "@/lib/r2/types";
-import { getPhotoUrl } from "@/lib/r2/photos";
+import { R2Image } from "./R2Image";
 import { cn } from "@/lib/utils/cn";
 
 interface Props {
@@ -25,10 +24,9 @@ export function PhotoGrid({ photos, onPhotoClick }: Props) {
           )}
           aria-label={`View photo: ${photo.title}`}
         >
-          <Image
-            src={getPhotoUrl(photo.r2Key, photo.updatedAt)}
+          <R2Image
+            photo={photo}
             alt={photo.title}
-            fill
             draggable={false}
             className="object-cover transition-transform duration-300 hover:scale-105 select-none"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"

@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
-import { getPhotos, getPhotoUrl } from "@/lib/r2/photos";
+import { getPhotos } from "@/lib/r2/photos";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncButton } from "@/components/admin/SyncButton";
+import { R2Image } from "@/components/photography/R2Image";
 
 export const metadata = { title: "Admin — Photos" };
 export const revalidate = 0;
@@ -34,10 +34,9 @@ export default async function AdminPhotosPage() {
             className="group relative overflow-hidden rounded-lg bg-surface-2 aspect-square
                        hover:ring-2 hover:ring-accent/60 transition-all"
           >
-            <Image
-              src={getPhotoUrl(photo.r2Key, photo.updatedAt)}
+            <R2Image
+              photo={photo}
               alt={photo.title}
-              fill
               draggable={false}
               className="object-cover select-none"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"

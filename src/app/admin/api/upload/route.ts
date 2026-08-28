@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { revalidateTag } from "next/cache";
 import { BUCKET, getR2Client } from "@/lib/r2/client";
+import { generateAndUploadVariants } from "@/lib/r2/variants";
+
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 export const maxDuration = 60;
 
@@ -66,15 +69,15 @@ export async function POST(req: NextRequest) {
   }
   if (galleryList.length) metadata["galleries"] = galleryList.map(enc).join(",");
 
-  // Width / height from exifr are passed as strings
-  const width = (formData.get("width") as string | null)?.trim();
-  if (width) metadata["width"] = width;
-  const height = (formData.get("height") as string | null)?.trim();
-  if (height) metadata["height"] = height;
-
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const client = getR2Client();
+
+    // Real pixel dimensions, read from the file itself (more reliable than
+    // caller-supplied EXIF values), and used to derive the resized variants.
+    const { width, height } = await generateAndUploadVariants(client, BUCKET, r2Key, buffer);
+    metadata["width"] = String(width);
+    metadata["height"] = String(height);
 
     await client.send(
       new PutObjectCommand({
@@ -83,6 +86,7 @@ export async function POST(req: NextRequest) {
         Body: buffer,
         ContentType: file.type || "image/jpeg",
         Metadata: metadata,
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       })
     );
 

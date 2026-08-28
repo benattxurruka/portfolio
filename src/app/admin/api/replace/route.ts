@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { revalidateTag } from "next/cache";
 import { BUCKET, getR2Client } from "@/lib/r2/client";
+import { generateAndUploadVariants, deleteVariants } from "@/lib/r2/variants";
+
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 export const maxDuration = 60;
 
@@ -9,7 +12,9 @@ export const maxDuration = 60;
  * POST /admin/api/replace
  *
  * Replaces the image bytes of an existing R2 object while preserving all
- * existing metadata. The r2Key (path) stays the same.
+ * existing metadata. The r2Key (path) stays the same. Also regenerates the
+ * resized WebP derivatives under `_variants/<r2Key>/` and refreshes the
+ * `width`/`height` metadata from the new file's real dimensions.
  *
  * Body: multipart/form-data
  *   - file   : the new image file
@@ -44,16 +49,18 @@ export async function POST(req: NextRequest) {
     );
     const existingMetadata = head.Metadata ?? {};
 
-    // Re-derive width/height from the new file if the caller supplied them
-    const width = (formData.get("width") as string | null)?.trim();
-    const height = (formData.get("height") as string | null)?.trim();
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Remove existing derivatives first — the new file may have different
+    // dimensions, and we don't want stale/orphaned variant widths left over.
+    await deleteVariants(client, BUCKET, r2Key);
+    const { width, height } = await generateAndUploadVariants(client, BUCKET, r2Key, buffer);
+
     const mergedMetadata = {
       ...existingMetadata,
-      ...(width ? { width } : {}),
-      ...(height ? { height } : {}),
+      width: String(width),
+      height: String(height),
     };
-
-    const buffer = Buffer.from(await file.arrayBuffer());
 
     await client.send(
       new PutObjectCommand({
@@ -62,6 +69,7 @@ export async function POST(req: NextRequest) {
         Body: buffer,
         ContentType: file.type || head.ContentType || "image/jpeg",
         Metadata: mergedMetadata,
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       })
     );
 

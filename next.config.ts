@@ -17,26 +17,10 @@ const nextConfig: NextConfig = {
     };
     return config;
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "*.r2.dev",
-      },
-      {
-        protocol: "https",
-        hostname: "*.cloudflarestorage.com",
-      },
-      ...(process.env.R2_PUBLIC_HOSTNAME
-        ? [
-            {
-              protocol: "https" as const,
-              hostname: process.env.R2_PUBLIC_HOSTNAME,
-            },
-          ]
-        : []),
-    ],
-  },
+  // No `images.remotePatterns` for the R2 photo host: photo galleries are
+  // served via R2Image (pre-generated WebP derivatives, plain <img>) rather
+  // than next/image, so they never go through Vercel's Image Optimization
+  // API. next/image is still used for small local static assets only.
 };
 
 export default withSentryConfig(withNextIntl(nextConfig), {

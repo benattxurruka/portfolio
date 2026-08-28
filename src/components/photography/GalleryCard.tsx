@@ -1,9 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Images } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { Gallery } from "@/lib/r2/types";
-import { getPhotoUrl } from "@/lib/r2/photos";
+import { R2Image } from "./R2Image";
 import { cn } from "@/lib/utils/cn";
 
 interface Props {
@@ -13,9 +12,6 @@ interface Props {
 
 export async function GalleryCard({ gallery, featured = false }: Props) {
   const t = await getTranslations("GalleryCard");
-  const coverUrl = gallery.coverPhoto
-    ? getPhotoUrl(gallery.coverPhoto.r2Key, gallery.coverPhoto.updatedAt)
-    : null;
 
   return (
     <Link
@@ -25,11 +21,10 @@ export async function GalleryCard({ gallery, featured = false }: Props) {
         featured ? "aspect-[21/9]" : "aspect-[4/3]"
       )}
     >
-      {coverUrl ? (
-        <Image
-          src={coverUrl}
+      {gallery.coverPhoto ? (
+        <R2Image
+          photo={gallery.coverPhoto}
           alt={gallery.name}
-          fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes={featured ? "100vw" : "(max-width: 768px) 100vw, 33vw"}
         />

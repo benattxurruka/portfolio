@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import {
   X, ChevronLeft, ChevronRight, Info,
   MapPin, Calendar, Heart, Tag, Play, Pause, Cast, Share2,
@@ -14,6 +13,7 @@ import { usePhotoTimer } from "@/hooks/usePhotoTimer";
 import { useCast } from "@/hooks/useCast";
 import { SLIDESHOW_DELAY } from "@/hooks/useLightbox";
 import { ScreenshotBlocker } from "./ScreenshotBlocker";
+import { R2Image } from "./R2Image";
 import { recordView } from "@/actions/view";
 import { cn } from "@/lib/utils/cn";
 
@@ -319,11 +319,10 @@ export function Lightbox({
               </svg>
             </div>
           )}
-          <Image
+          <R2Image
             key={currentPhoto.id}
-            src={photoUrl}
+            photo={currentPhoto}
             alt={currentPhoto.title}
-            fill
             draggable={false}
             className={cn("object-contain animate-fade-in select-none", isImageLoading && "opacity-0")}
             sizes="(orientation: portrait) 100vw, 90vw"

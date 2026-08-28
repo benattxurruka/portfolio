@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import type { Photo } from "@/lib/r2/types";
+import { R2Image } from "@/components/photography/R2Image";
 
 interface Slide {
-  url: string;
+  photo: Pick<Photo, "r2Key" | "updatedAt" | "width">;
   title: string;
 }
 
@@ -38,14 +39,13 @@ export function HomeSlideshow({ slides, labelText, linkText }: Props) {
       ) : (
         slides.map((slide, i) => (
           <div
-            key={slide.url}
+            key={slide.photo.r2Key}
             className="absolute inset-0 transition-opacity duration-[1200ms] ease-in-out"
             style={{ opacity: i === current ? 1 : 0 }}
           >
-            <Image
-              src={slide.url}
+            <R2Image
+              photo={slide.photo}
               alt={slide.title}
-              fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, calc(100vw - 240px)"
               priority={i === 0}
