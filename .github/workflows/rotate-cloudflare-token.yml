@@ -26,51 +26,81 @@ jobs:
           CF_ADMIN_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_TOKEN }}
           R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
         run: |
+          # R2 S3 credentials are derived from a regular Cloudflare API token:
+          #   Access Key ID     = token id
+          #   Secret Access Key = sha256(token value)
+          # https://developers.cloudflare.com/r2/api/tokens/
+          #
+          # CF_ADMIN_TOKEN needs the account permission "Account API Tokens: Edit"
+          # so it can create/list/delete account-owned API tokens.
           TOKEN_NAME="portfolio-r2-rotating"
-          BASE_URL="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/tokens"
-          AUTH_HEADER="Authorization: Bearer ${CF_ADMIN_TOKEN}"
+          API="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}"
 
-          # Revoke the previous rotating token (ignore errors if it doesn't exist)
-          OLD_ID=$(curl -sf "${BASE_URL}" -H "${AUTH_HEADER}" \
-            | jq -r --arg name "$TOKEN_NAME" '.result[] | select(.name == $name) | .id // empty' \
-            | head -1)
+          # cf METHOD PATH [JSON_BODY] — prints body, fails loudly with the API error
+          cf() {
+            local resp code body
+            resp=$(curl -s -w "\n%{http_code}" -X "$1" "${API}$2" \
+              -H "Authorization: Bearer ${CF_ADMIN_TOKEN}" \
+              -H "Content-Type: application/json" ${3:+-d "$3"})
+            code=$(echo "$resp" | tail -1)
+            body=$(echo "$resp" | head -n -1)
+            if [ "${code:0:1}" != "2" ]; then
+              echo "ERROR: $1 $2 returned HTTP ${code}" >&2
+              echo "$body" | jq '.errors // .' >&2 || echo "$body" >&2
+              return 1
+            fi
+            echo "$body"
+          }
 
-          if [ -n "$OLD_ID" ]; then
-            curl -sf -X DELETE "${BASE_URL}/${OLD_ID}" -H "${AUTH_HEADER}"
-            echo "Revoked old token (${OLD_ID})"
-          else
-            echo "No previous rotating token found — skipping revocation"
-          fi
+          # ── Clean up rotating tokens that have already expired ────────────
+          NOW=$(date -u +%s)
+          cf GET "/tokens?per_page=100" \
+            | jq -r --arg name "$TOKEN_NAME" --argjson now "$NOW" \
+                '.result[] | select(.name == $name)
+                 | select(.expires_on != null and (.expires_on | sub("\\.[0-9]+Z$";"Z") | fromdateiso8601) < $now)
+                 | .id' \
+            | while read -r id; do
+                cf DELETE "/tokens/${id}" > /dev/null \
+                  && echo "Deleted expired token ${id}" \
+                  || echo "WARNING: could not delete ${id} (continuing)"
+              done
 
-          # Create a new token valid for 40 days.
-          # The workflow runs monthly (31-day max gap), so this gives a 9-day buffer.
-          # Adjust permissions/buckets to match your R2 setup if needed.
-          RESPONSE=$(curl -sf -X POST "${BASE_URL}" \
-            -H "${AUTH_HEADER}" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"name\": \"${TOKEN_NAME}\",
-              \"permissions\": [\"admin:read\", \"admin:write\"],
-              \"buckets\": [{\"bucketName\": \"${R2_BUCKET_NAME}\"}],
-              \"ttlSeconds\": 3456000
-            }")
-
-          ACCESS_KEY=$(echo "$RESPONSE" | jq -r '.result.accessKeyId')
-          SECRET_KEY=$(echo "$RESPONSE" | jq -r '.result.secretAccessKey')
-
-          if [ "$ACCESS_KEY" = "null" ] || [ -z "$ACCESS_KEY" ]; then
-            echo "ERROR: Token creation failed. Cloudflare response:"
-            echo "$RESPONSE" | jq .
+          # ── Look up the R2 bucket write permission group ──────────────────
+          PG_ID=$(cf GET "/tokens/permission_groups" \
+            | jq -r '.result[] | select(.name == "Workers R2 Storage Bucket Item Write") | .id' | head -1)
+          if [ -z "$PG_ID" ]; then
+            echo "ERROR: permission group 'Workers R2 Storage Bucket Item Write' not found"
             exit 1
           fi
 
+          # ── Create a new token valid for 40 days ──────────────────────────
+          # Runs monthly (31-day max gap) → 9-day buffer. Older tokens are not
+          # revoked here so the running deployment keeps working until the
+          # redeploy finishes; they expire on their own and get cleaned up above.
+          EXPIRES=$(date -u -d '40 days' '+%Y-%m-%dT%H:%M:%SZ')
+          RESOURCE="com.cloudflare.edge.r2.bucket.${CF_ACCOUNT_ID}_default_${R2_BUCKET_NAME}"
+          BODY=$(jq -n --arg name "$TOKEN_NAME" --arg exp "$EXPIRES" --arg res "$RESOURCE" --arg pg "$PG_ID" \
+            '{name: $name, expires_on: $exp,
+              policies: [{effect: "allow", resources: {($res): "*"}, permission_groups: [{id: $pg}]}]}')
+
+          RESPONSE=$(cf POST "/tokens" "$BODY")
+          ACCESS_KEY=$(echo "$RESPONSE" | jq -r '.result.id')
+          TOKEN_VALUE=$(echo "$RESPONSE" | jq -r '.result.value')
+
+          if [ -z "$ACCESS_KEY" ] || [ "$ACCESS_KEY" = "null" ] || [ -z "$TOKEN_VALUE" ] || [ "$TOKEN_VALUE" = "null" ]; then
+            echo "ERROR: unexpected token creation response"
+            exit 1
+          fi
+          SECRET_KEY=$(printf '%s' "$TOKEN_VALUE" | sha256sum | cut -d' ' -f1)
+
           # Mask values so they never appear in plain text in any log line
+          echo "::add-mask::$TOKEN_VALUE"
           echo "::add-mask::$ACCESS_KEY"
           echo "::add-mask::$SECRET_KEY"
 
           echo "ACCESS_KEY_ID=$ACCESS_KEY"    >> "$GITHUB_OUTPUT"
           echo "SECRET_ACCESS_KEY=$SECRET_KEY" >> "$GITHUB_OUTPUT"
-          echo "New R2 token created successfully"
+          echo "New R2 token created (expires ${EXPIRES})"
 
       # ── 2. Propagate new credentials to Vercel ─────────────────────────────
       - name: Update Vercel environment variables

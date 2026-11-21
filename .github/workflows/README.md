@@ -40,7 +40,7 @@ All workflows use the `production` GitHub Actions environment. Secrets must be s
 | `SENTRY_PROJECT` | deploy | Sentry project slug |
 | `NEXT_PUBLIC_SENTRY_DSN` | deploy | Sentry DSN |
 | `CLOUDFLARE_ACCOUNT_ID` | rotate-cloudflare | Cloudflare account ID |
-| `CLOUDFLARE_ADMIN_TOKEN` | rotate-cloudflare | Cloudflare token with R2 token management rights |
+| `CLOUDFLARE_ADMIN_TOKEN` | rotate-cloudflare | Account API token with **Account API Tokens: Edit** (creates the rotating R2 token) |
 | `GRAFANA_ADMIN_TOKEN` | rotate-grafana | Cloud Access Policy token with `accesspolicies:read/write` scopes |
 | `GRAFANA_CLOUD_ACCESS_POLICY_ID` | rotate-grafana | ID of the OTLP Cloud Access Policy |
 | `GRAFANA_INSTANCE_ID` | rotate-grafana | Numeric Grafana Cloud stack/instance ID |
@@ -108,24 +108,20 @@ export CF_ADMIN_TOKEN="your_cloudflare_admin_token"
 export R2_BUCKET_NAME="portfolio-photos"
 ```
 
+R2 S3 credentials come from a regular account API token: **Access Key ID = token `id`**, **Secret Access Key = `sha256(token value)`** ([docs](https://developers.cloudflare.com/r2/api/tokens/)).
+
 **List existing rotating tokens (read-only check):**
 ```bash
-curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/tokens" \
+curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/tokens?per_page=100" \
   -H "Authorization: Bearer ${CF_ADMIN_TOKEN}" \
-  | jq '.result[] | select(.name == "portfolio-r2-rotating") | {id, name}'
+  | jq '.result[] | select(.name == "portfolio-r2-rotating") | {id, status, expires_on}'
 ```
 
-**Create a new token (actually rotates — do only when ready):**
+**Verify the admin token can see the R2 permission group:**
 ```bash
-curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/tokens" \
+curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/tokens/permission_groups" \
   -H "Authorization: Bearer ${CF_ADMIN_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"name\": \"portfolio-r2-rotating-test\",
-    \"permissions\": [\"admin:read\", \"admin:write\"],
-    \"buckets\": [{\"bucketName\": \"${R2_BUCKET_NAME}\"}],
-    \"ttlSeconds\": 3456000
-  }" | jq '{accessKeyId: .result.accessKeyId, ok: .success}'
+  | jq '.result[] | select(.name == "Workers R2 Storage Bucket Item Write") | .id'
 ```
 
 ---
